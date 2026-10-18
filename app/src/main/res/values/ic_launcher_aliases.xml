@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- El icono redondo (API 24-25) usa el mismo artwork que el cuadrado. -->
+    <item name="ic_launcher_round" type="mipmap">@mipmap/ic_launcher</item>
+</resources>
