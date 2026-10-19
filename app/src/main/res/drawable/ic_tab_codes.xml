@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Código QR (códigos de viaje): tres marcas de posición y puntos de datos. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <path
+        android:fillColor="#FF000000"
+        android:fillType="evenOdd"
+        android:pathData="M2,2 h7 v7 h-7 Z M3,3 h5 v5 h-5 Z M4,4 h3 v3 h-3 Z M15,2 h7 v7 h-7 Z M16,3 h5 v5 h-5 Z M17,4 h3 v3 h-3 Z M2,15 h7 v7 h-7 Z M3,16 h5 v5 h-5 Z M4,17 h3 v3 h-3 Z M14,14 h2 v2 h-2 Z M17,14 h2 v2 h-2 Z M20,14 h2 v2 h-2 Z M14,17 h2 v2 h-2 Z M20,17 h2 v2 h-2 Z M17,20 h2 v2 h-2 Z M20,20 h2 v2 h-2 Z" />
+</vector>

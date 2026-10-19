@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Recibo (costos): cuerpo con borde inferior en zigzag y renglones calados. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <path
+        android:fillColor="#FF000000"
+        android:fillType="evenOdd"
+        android:pathData="M6,2 h12 v20 l-2,-1.5 l-2,1.5 l-2,-1.5 l-2,1.5 l-2,-1.5 l-2,1.5 Z M8,6 h8 v2 h-8 Z M8,10 h8 v2 h-8 Z M8,14 h6 v2 h-6 Z" />
+</vector>
