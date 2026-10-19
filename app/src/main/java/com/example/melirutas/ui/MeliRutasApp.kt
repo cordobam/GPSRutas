@@ -1,9 +1,12 @@
 package com.example.melirutas.ui
 
 
+import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -24,14 +27,69 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 
-/** Navegación por estado: Home → Processing → Review (o Error). */
 @Composable
 fun MeliRutasApp() {
-    val viewModel = rememberBatchViewModel()
-    val state by viewModel.state.collectAsState()
-    val captures by viewModel.captures.collectAsState()
+    val batchViewModel = rememberBatchViewModel()
+    val mainViewModel = rememberMainViewModel()
 
-    when (val current = state) {
+    val tab by mainViewModel.selectedTab.collectAsState()
+    val state by batchViewModel.state.collectAsState()
+    val captures by batchViewModel.captures.collectAsState()
+    val kmText by mainViewModel.kmText.collectAsState()
+    val priceText by mainViewModel.priceText.collectAsState()
+    val totalText by mainViewModel.totalText.collectAsState()
+    val codes by mainViewModel.codes.collectAsState()
+
+    val hideBar = tab == AppTab.LOTE &&
+        (state is BatchViewModel.BatchState.Capture || state is BatchViewModel.BatchState.Processing)
+
+    Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        bottomBar = {
+            if (!hideBar) {
+                AppBottomBar(selected = tab, onSelect = mainViewModel::selectTab)
+            }
+        }
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            when (tab) {
+                AppTab.LOTE -> LoteFlow(
+                    state = state,
+                    captures = captures,
+                    viewModel = batchViewModel
+                )
+
+                AppTab.COSTOS -> CostsScreen(
+                    kmText = kmText,
+                    priceText = priceText,
+                    totalText = totalText,
+                    onKmChange = mainViewModel::onKmChange,
+                    onPriceChange = mainViewModel::onPriceChange
+                )
+
+                AppTab.CODIGOS -> CodesScreen(
+                    codes = codes,
+                    onAdd = mainViewModel::addCode,
+                    onRemove = mainViewModel::removeCode,
+                    onClear = mainViewModel::clearCodes
+                )
+            }
+        }
+    }
+}
+
+/** Flujo del lote (fotos → OCR → revisión de paradas) dentro de la pestaña "Lote". */
+@Composable
+private fun LoteFlow(
+    state: BatchViewModel.BatchState,
+    captures: List<Uri>,
+    viewModel: BatchViewModel
+) {
+    when (state) {
         is BatchViewModel.BatchState.Home ->
             HomeScreen(
                 onPickPhotos = viewModel::procesarFotos,
@@ -47,11 +105,11 @@ fun MeliRutasApp() {
             )
 
         is BatchViewModel.BatchState.Processing ->
-            ProcessingScreen(current = current.current, total = current.total)
+            ProcessingScreen(current = state.current, total = state.total)
 
         is BatchViewModel.BatchState.Review ->
             ReviewScreen(
-                stops = current.stops,
+                stops = state.stops,
                 onUpdateStop = viewModel::updateStop,
                 onRemoveStop = viewModel::removeStop,
                 onAddStop = viewModel::addStop,
@@ -59,7 +117,7 @@ fun MeliRutasApp() {
             )
 
         is BatchViewModel.BatchState.Error ->
-            ErrorScreen(message = current.message, onVolver = viewModel::nuevoLote)
+            ErrorScreen(message = state.message, onVolver = viewModel::nuevoLote)
     }
 }
 
@@ -68,6 +126,14 @@ private fun rememberBatchViewModel(): BatchViewModel {
     val activity = LocalContext.current as ComponentActivity
     return remember(activity) {
         ViewModelProvider(activity)[BatchViewModel::class.java]
+    }
+}
+
+@Composable
+private fun rememberMainViewModel(): MainViewModel {
+    val activity = LocalContext.current as ComponentActivity
+    return remember(activity) {
+        ViewModelProvider(activity)[MainViewModel::class.java]
     }
 }
 
