@@ -35,9 +35,14 @@ fun MeliRutasApp() {
     val tab by mainViewModel.selectedTab.collectAsState()
     val state by batchViewModel.state.collectAsState()
     val captures by batchViewModel.captures.collectAsState()
-    val kmText by mainViewModel.kmText.collectAsState()
-    val priceText by mainViewModel.priceText.collectAsState()
-    val totalText by mainViewModel.totalText.collectAsState()
+    val kmInicialText by mainViewModel.kmInicialText.collectAsState()
+    val kmFinalText by mainViewModel.kmFinalText.collectAsState()
+    val rendimientoText by mainViewModel.rendimientoText.collectAsState()
+    val precioText by mainViewModel.precioText.collectAsState()
+    val kmRecorridosText by mainViewModel.kmRecorridosText.collectAsState()
+    val litrosText by mainViewModel.litrosText.collectAsState()
+    val costoTotalText by mainViewModel.costoTotalText.collectAsState()
+    val historial by mainViewModel.historial.collectAsState()
     val codes by mainViewModel.codes.collectAsState()
 
     val hideBar = tab == AppTab.LOTE &&
@@ -64,11 +69,19 @@ fun MeliRutasApp() {
                 )
 
                 AppTab.COSTOS -> CostsScreen(
-                    kmText = kmText,
-                    priceText = priceText,
-                    totalText = totalText,
-                    onKmChange = mainViewModel::onKmChange,
-                    onPriceChange = mainViewModel::onPriceChange
+                    kmInicialText = kmInicialText,
+                    kmFinalText = kmFinalText,
+                    rendimientoText = rendimientoText,
+                    precioText = precioText,
+                    kmRecorridosText = kmRecorridosText,
+                    litrosText = litrosText,
+                    costoTotalText = costoTotalText,
+                    historial = historial,
+                    onKmInicialChange = mainViewModel::onKmInicialChange,
+                    onKmFinalChange = mainViewModel::onKmFinalChange,
+                    onRendimientoChange = mainViewModel::onRendimientoChange,
+                    onPrecioChange = mainViewModel::onPrecioChange,
+                    onNuevoViaje = mainViewModel::nuevoViaje
                 )
 
                 AppTab.CODIGOS -> CodesScreen(

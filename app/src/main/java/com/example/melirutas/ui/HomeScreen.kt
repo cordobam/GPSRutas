@@ -1,8 +1,10 @@
 package com.example.melirutas.ui
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -46,9 +48,18 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     var permissionDenied by remember { mutableStateOf(false) }
+    var pickerError by remember { mutableStateOf(false) }
 
-    val galleryPicker = rememberLauncherForActivityResult(
+    val photoPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(15)
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            onPickPhotos(uris)
+        }
+    }
+
+    val docPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
         if (uris.isNotEmpty()) {
             onPickPhotos(uris)
@@ -72,6 +83,21 @@ fun HomeScreen(
             onOpenCamera()
         } else {
             cameraPermission.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    fun openGallery() {
+        pickerError = false
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                photoPicker.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            } else {
+                docPicker.launch(arrayOf("image/*"))
+            }
+        } catch (e: ActivityNotFoundException) {
+            pickerError = true
         }
     }
 
@@ -117,16 +143,19 @@ fun HomeScreen(
                 Text("Sacar fotos (cámara)", style = MaterialTheme.typography.bodyLarge)
             }
             FilledTonalButton(
-                onClick = {
-                    galleryPicker.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    )
-                },
+                onClick = { openGallery() },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(Icons.Filled.PhotoLibrary, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
                 Text("Elegir fotos de la galería", style = MaterialTheme.typography.bodyLarge)
+            }
+            if (pickerError) {
+                Text(
+                    text = "No se pudo abrir la galería. Probá abrir la app Archivos o Fotos y volvé a intentar.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
             if (permissionDenied) {
                 Spacer(Modifier.height(8.dp))

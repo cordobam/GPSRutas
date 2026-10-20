@@ -1,15 +1,33 @@
 package com.example.melirutas.cost
 
 /**
- * Cuenta el costo de un viaje como km × precio por km, y formatea el resultado
- * en pesos argentinos ($ 1.234,56).
+ * Costo de un viaje a partir del odómetro y el consumo del auto:
+ *   km recorridos = km final − km inicial
+ *   litros        = km recorridos ÷ rendimiento (km/l)
+ *   costo total   = litros × precio por litro
  *
  * Kotlin puro (sin Android): testeable en tests JVM.
  */
 object CostCalculator {
 
-    /** Costo total del viaje. */
-    fun total(km: Double, pricePerKm: Double): Double = km * pricePerKm
+    /** Kilómetros recorridos. null si falta alguno de los dos o si el final es menor al inicial. */
+    fun recorrido(kmInicial: Double?, kmFinal: Double?): Double? {
+        if (kmInicial == null || kmFinal == null) return null
+        val km = kmFinal - kmInicial
+        return if (km >= 0.0) km else null
+    }
+
+    /** Litros a cargar. null si falta el recorrido o el rendimiento es 0 (o negativo). */
+    fun litros(recorrido: Double?, kmPorLitro: Double?): Double? {
+        if (recorrido == null || kmPorLitro == null || kmPorLitro <= 0.0) return null
+        return recorrido / kmPorLitro
+    }
+
+    /** Costo total. null si falta la cantidad de litros o el precio por litro. */
+    fun costo(litros: Double?, precioPorLitro: Double?): Double? {
+        if (litros == null || precioPorLitro == null) return null
+        return litros * precioPorLitro
+    }
 
     /**
      * Convierte lo que el usuario escribió a número, aceptando coma o punto como
@@ -56,6 +74,43 @@ object CostCalculator {
             append(grouped)
             append(",")
             append(decimals)
+        }
+    }
+
+    /**
+     * Formatea un número con miles separados por punto y coma decimal, sin ceros
+     * finales (ej. "1.234", "12,5", "7,25"). Útil para km y litros.
+     */
+    fun formatNumber(value: Double, maxDecimals: Int): String {
+        require(maxDecimals >= 0) { "maxDecimals no puede ser negativo" }
+
+        val negative = value < 0.0
+        val factor = Math.pow(10.0, maxDecimals.toDouble())
+        val rounded = Math.round(Math.abs(value) * factor) / factor
+
+        val integerPart = rounded.toLong()
+        val grouped = integerPart.toString()
+            .reversed()
+            .chunked(3)
+            .joinToString(".")
+            .reversed()
+
+        val decimals = if (maxDecimals == 0) {
+            ""
+        } else {
+            Math.round((rounded - integerPart) * factor)
+                .toString()
+                .padStart(maxDecimals, '0')
+                .trimEnd('0')
+        }
+
+        return buildString {
+            if (negative) append("-")
+            append(grouped)
+            if (decimals.isNotEmpty()) {
+                append(",")
+                append(decimals)
+            }
         }
     }
 }
