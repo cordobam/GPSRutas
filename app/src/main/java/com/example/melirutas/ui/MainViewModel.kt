@@ -78,8 +78,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             .map { costo -> costo?.let { CostCalculator.formatCurrency(it) } ?: SIN_DATO }
             .stateIn(viewModelScope, SharingStarted.Eagerly, SIN_DATO)
 
-    /** Viajes finalizados, del más reciente al más viejo. */
-    val historial: StateFlow<List<TripEntity>> = repository.historial
+    /** Viajes finalizados de los últimos 7 días, del más reciente al más viejo. */
+    val historial: StateFlow<List<TripEntity>> = repository.historial()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private var guardadoJob: Job? = null
@@ -137,6 +137,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _rendimientoText.value = plainNumber(prefs.kmPerLiter.value)
             _precioText.value = plainNumber(prefs.pricePerLiter.value)
         }
+    }
+
+    /** Borra un viaje ya cerrado del historial. */
+    fun eliminarViaje(trip: TripEntity) {
+        viewModelScope.launch { repository.eliminarViaje(trip) }
     }
 
     /** Devuelve false si el código está vacío o ya existía. */
