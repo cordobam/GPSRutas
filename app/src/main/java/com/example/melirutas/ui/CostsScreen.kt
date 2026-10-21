@@ -12,17 +12,32 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -50,8 +65,21 @@ fun CostsScreen(
     onKmFinalChange: (String) -> Unit,
     onRendimientoChange: (String) -> Unit,
     onPrecioChange: (String) -> Unit,
-    onNuevoViaje: () -> Unit
+    onNuevoViaje: () -> Unit,
+    onEliminarViaje: (TripEntity) -> Unit
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    var notice by remember { mutableStateOf<String?>(null) }
+    var confirmarBorrarId by rememberSaveable { mutableStateOf(0L) }
+
+    val viajePorBorrar = historial.firstOrNull { it.id == confirmarBorrarId }
+
+    LaunchedEffect(notice) {
+        val message = notice ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        notice = null
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -61,7 +89,8 @@ fun CostsScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -142,19 +171,52 @@ fun CostsScreen(
             if (historial.isEmpty()) {
                 item {
                     Text(
-                        text = "Todavía no cerraste ningún viaje. Cargá el km final y tocá \"Nuevo viaje\".",
+                        text = "No hay viajes cargados en los últimos 7 días. Terminá un viaje tocando \"Nuevo viaje\".",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
                 items(historial, key = { it.id }) { trip ->
-                    TripHistoryCard(trip)
+                    TripHistoryCard(
+                        trip = trip,
+                        onDelete = { confirmarBorrarId = trip.id }
+                    )
                 }
             }
 
             item { Spacer(Modifier.height(18.dp)) }
         }
+    }
+
+    if (viajePorBorrar != null) {
+        AlertDialog(
+            onDismissRequest = { confirmarBorrarId = 0L },
+            title = { Text("Borrar viaje") },
+            text = {
+                Text(
+                    "Se va a borrar el viaje del " +
+                        FECHA_FORMAT.format(Date(viajePorBorrar.fechaFin ?: viajePorBorrar.fechaInicio)) +
+                        ". Esta acción no se puede deshacer."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onEliminarViaje(viajePorBorrar)
+                        confirmarBorrarId = 0L
+                        notice = "Viaje borrado."
+                    }
+                ) {
+                    Text("Borrar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmarBorrarId = 0L }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
 
@@ -207,7 +269,7 @@ private fun ResultRow(label: String, value: String) {
 }
 
 @Composable
-private fun TripHistoryCard(trip: TripEntity) {
+private fun TripHistoryCard(trip: TripEntity, onDelete: () -> Unit) {
     val km = CostCalculator.recorrido(trip.kmInicial, trip.kmFinal)
     val litros = CostCalculator.litros(km, trip.rendimiento)
     val costo = CostCalculator.costo(litros, trip.precioPorLitro)
@@ -218,31 +280,45 @@ private fun TripHistoryCard(trip: TripEntity) {
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(Modifier.padding(14.dp)) {
-            Text(
-                text = FECHA_FORMAT.format(Date(fecha)),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = "Km: " + (km?.let { CostCalculator.formatNumber(it, 1) } ?: "—"),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "Litros: " + (litros?.let { CostCalculator.formatNumber(it, 2) } ?: "—"),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "Costo: " + (costo?.let { CostCalculator.formatCurrency(it) } ?: "—"),
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, top = 6.dp, bottom = 6.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = FECHA_FORMAT.format(Date(fecha)),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "Km: " + (km?.let { CostCalculator.formatNumber(it, 1) } ?: "—"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Litros: " + (litros?.let { CostCalculator.formatNumber(it, 2) } ?: "—"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Costo: " + (costo?.let { CostCalculator.formatCurrency(it) } ?: "—"),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Borrar viaje",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

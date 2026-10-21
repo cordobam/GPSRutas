@@ -81,7 +81,8 @@ fun MeliRutasApp() {
                     onKmFinalChange = mainViewModel::onKmFinalChange,
                     onRendimientoChange = mainViewModel::onRendimientoChange,
                     onPrecioChange = mainViewModel::onPrecioChange,
-                    onNuevoViaje = mainViewModel::nuevoViaje
+                    onNuevoViaje = mainViewModel::nuevoViaje,
+                    onEliminarViaje = mainViewModel::eliminarViaje
                 )
 
                 AppTab.CODIGOS -> CodesScreen(
