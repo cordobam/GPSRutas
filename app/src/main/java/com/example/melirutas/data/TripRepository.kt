@@ -18,8 +18,11 @@ class TripRepository(private val dao: TripDao) {
      */
     fun historial(): Flow<List<TripEntity>> = dao.historial().map { viajes ->
         val desde = System.currentTimeMillis() - ULTIMA_SEMANA_MILLIS
-        viajes.filter { (it.fechaFin ?: 0L) >= desde }
+        viajes.filter { it.fechaInicio >= desde }
     }
+
+    /** Todos los viajes finalizados, sin límite de fechas: sirve para el consolidado semanal. */
+    fun todosLosViajes(): Flow<List<TripEntity>> = dao.historial()
 
     /** Borra un viaje del historial. */
     suspend fun eliminarViaje(trip: TripEntity) = dao.eliminar(trip)
@@ -27,13 +30,14 @@ class TripRepository(private val dao: TripDao) {
     /**
      * Crea o actualiza el viaje abierto con lo que el usuario cargó. No hace nada
      * si todavía no hay km (así no se crean viajes fantasma por solo cambiar el
-     * rendimiento o el precio).
+     * rendimiento o el precio). `fechaInicio` es la fecha del viaje elegida en el date picker.
      */
     suspend fun guardarBorrador(
         kmInicial: Double?,
         kmFinal: Double?,
         rendimiento: Double?,
-        precioPorLitro: Double?
+        precioPorLitro: Double?,
+        fechaInicio: Long
     ) {
         if (kmInicial == null && kmFinal == null) return
 
@@ -41,7 +45,7 @@ class TripRepository(private val dao: TripDao) {
         if (abierto == null) {
             dao.insertar(
                 TripEntity(
-                    fechaInicio = System.currentTimeMillis(),
+                    fechaInicio = fechaInicio,
                     fechaFin = null,
                     kmInicial = kmInicial,
                     kmFinal = kmFinal,
@@ -52,6 +56,7 @@ class TripRepository(private val dao: TripDao) {
         } else {
             dao.actualizar(
                 abierto.copy(
+                    fechaInicio = fechaInicio,
                     kmInicial = kmInicial,
                     kmFinal = kmFinal,
                     rendimiento = rendimiento,

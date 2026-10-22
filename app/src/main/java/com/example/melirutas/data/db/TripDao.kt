@@ -14,8 +14,8 @@ interface TripDao {
     @Query("SELECT * FROM trips WHERE fechaFin IS NULL ORDER BY id DESC LIMIT 1")
     fun viajeAbierto(): Flow<List<TripEntity>>
 
-    /** Viajes finalizados, del más reciente al más viejo. */
-    @Query("SELECT * FROM trips WHERE fechaFin IS NOT NULL ORDER BY fechaFin DESC")
+    /** Viajes finalizados, del más reciente al más viejo según la fecha del viaje. */
+    @Query("SELECT * FROM trips WHERE fechaFin IS NOT NULL ORDER BY fechaInicio DESC")
     fun historial(): Flow<List<TripEntity>>
 
     @Insert
