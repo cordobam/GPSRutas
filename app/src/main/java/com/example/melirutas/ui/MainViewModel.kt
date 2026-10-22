@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.melirutas.cost.CostCalculator
+import com.example.melirutas.cost.Semana
 import com.example.melirutas.data.AppPreferences
 import com.example.melirutas.data.TripRepository
 import com.example.melirutas.data.db.MeliRutasDatabase
@@ -22,6 +23,9 @@ import kotlinx.coroutines.launch
 
 /** Pestañas de la barra inferior. */
 enum class AppTab { LOTE, COSTOS, CODIGOS }
+
+/** Secciones de la pestaña Costos. */
+enum class CostosModo { VIAJE, CONSOLIDADO }
 
 /**
  * Estado de nivel app: pestaña activa, códigos de viaje y calculadora de costos.
@@ -48,6 +52,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _precioText = MutableStateFlow(plainNumber(prefs.pricePerLiter.value))
     val precioText: StateFlow<String> = _precioText.asStateFlow()
+
+    /** Fecha elegida para el viaje en curso (la usa el date picker de Costos). */
+    private val _fechaViaje = MutableStateFlow(System.currentTimeMillis())
+    val fechaViaje: StateFlow<Long> = _fechaViaje.asStateFlow()
 
     private val kmRecorrido = combine(_kmInicialText, _kmFinalText) { inicial, fin ->
         CostCalculator.recorrido(
@@ -82,6 +90,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val historial: StateFlow<List<TripEntity>> = repository.historial()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    /** Todos los viajes cerrados: los que se agrupan por semana en el consolidado. */
+    val todosCerrados: StateFlow<List<TripEntity>> = repository.todosLosViajes()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Sección visible de Costos: el formulario del viaje o el consolidado semanal. */
+    private val _costosModo = MutableStateFlow(CostosModo.VIAJE)
+    val costosModo: StateFlow<CostosModo> = _costosModo.asStateFlow()
+
+    /** Lunes 00:00 de la semana que se está mirando en el consolidado. */
+    private val _semanaInicio = MutableStateFlow(Semana.inicioDe(System.currentTimeMillis()))
+    val semanaInicio: StateFlow<Long> = _semanaInicio.asStateFlow()
+
+    /** Viajes de esa semana que el usuario marcó para ver el total. Arranca vacío. */
+    private val _viajesSeleccionados = MutableStateFlow<Set<Long>>(emptySet())
+    val viajesSeleccionados: StateFlow<Set<Long>> = _viajesSeleccionados.asStateFlow()
+
     private var guardadoJob: Job? = null
 
     init {
@@ -91,12 +115,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 viaje.kmFinal?.let { _kmFinalText.value = plainNumber(it) }
                 viaje.rendimiento?.let { _rendimientoText.value = plainNumber(it) }
                 viaje.precioPorLitro?.let { _precioText.value = plainNumber(it) }
+                _fechaViaje.value = viaje.fechaInicio
             }
         }
     }
 
     fun selectTab(tab: AppTab) {
         _selectedTab.value = tab
+    }
+
+    fun setCostosModo(modo: CostosModo) {
+        _costosModo.value = modo
     }
 
     fun onKmInicialChange(value: String) {
@@ -121,6 +150,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         programarGuardado()
     }
 
+    /** Cambia la fecha del viaje en curso (para cargar viajes que olvidaron anotar ese día). */
+    fun onFechaChange(millis: Long) {
+        _fechaViaje.value = millis
+        programarGuardado()
+    }
+
+    fun semanaAnterior() {
+        _semanaInicio.value = Semana.masDias(_semanaInicio.value, -7)
+        _viajesSeleccionados.value = emptySet()
+    }
+
+    fun semanaSiguiente() {
+        _semanaInicio.value = Semana.masDias(_semanaInicio.value, 7)
+        _viajesSeleccionados.value = emptySet()
+    }
+
+    fun irASemanaActual() {
+        _semanaInicio.value = Semana.inicioDe(System.currentTimeMillis())
+        _viajesSeleccionados.value = emptySet()
+    }
+
+    fun toggleViaje(id: Long) {
+        _viajesSeleccionados.value = _viajesSeleccionados.value.let { actual ->
+            if (id in actual) actual - id else actual + id
+        }
+    }
+
     /** Cierra el viaje actual (si tiene datos) y deja el formulario listo para otro. */
     fun nuevoViaje() {
         viewModelScope.launch {
@@ -129,13 +185,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 kmInicial = CostCalculator.parseDecimal(_kmInicialText.value),
                 kmFinal = CostCalculator.parseDecimal(_kmFinalText.value),
                 rendimiento = CostCalculator.parseDecimal(_rendimientoText.value),
-                precioPorLitro = CostCalculator.parseDecimal(_precioText.value)
+                precioPorLitro = CostCalculator.parseDecimal(_precioText.value),
+                fechaInicio = _fechaViaje.value
             )
             repository.nuevoViaje()
             _kmInicialText.value = ""
             _kmFinalText.value = ""
             _rendimientoText.value = plainNumber(prefs.kmPerLiter.value)
             _precioText.value = plainNumber(prefs.pricePerLiter.value)
+            _fechaViaje.value = System.currentTimeMillis()
         }
     }
 
@@ -164,7 +222,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 kmInicial = CostCalculator.parseDecimal(_kmInicialText.value),
                 kmFinal = CostCalculator.parseDecimal(_kmFinalText.value),
                 rendimiento = CostCalculator.parseDecimal(_rendimientoText.value),
-                precioPorLitro = CostCalculator.parseDecimal(_precioText.value)
+                precioPorLitro = CostCalculator.parseDecimal(_precioText.value),
+                fechaInicio = _fechaViaje.value
             )
         }
     }

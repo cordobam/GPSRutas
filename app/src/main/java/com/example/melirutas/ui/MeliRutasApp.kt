@@ -43,6 +43,11 @@ fun MeliRutasApp() {
     val litrosText by mainViewModel.litrosText.collectAsState()
     val costoTotalText by mainViewModel.costoTotalText.collectAsState()
     val historial by mainViewModel.historial.collectAsState()
+    val costosModo by mainViewModel.costosModo.collectAsState()
+    val fechaViaje by mainViewModel.fechaViaje.collectAsState()
+    val todosCerrados by mainViewModel.todosCerrados.collectAsState()
+    val semanaInicio by mainViewModel.semanaInicio.collectAsState()
+    val viajesSeleccionados by mainViewModel.viajesSeleccionados.collectAsState()
     val codes by mainViewModel.codes.collectAsState()
 
     val hideBar = tab == AppTab.LOTE &&
@@ -69,6 +74,8 @@ fun MeliRutasApp() {
                 )
 
                 AppTab.COSTOS -> CostsScreen(
+                    modo = costosModo,
+                    fechaViaje = fechaViaje,
                     kmInicialText = kmInicialText,
                     kmFinalText = kmFinalText,
                     rendimientoText = rendimientoText,
@@ -77,12 +84,21 @@ fun MeliRutasApp() {
                     litrosText = litrosText,
                     costoTotalText = costoTotalText,
                     historial = historial,
+                    todosCerrados = todosCerrados,
+                    semanaInicio = semanaInicio,
+                    viajesSeleccionados = viajesSeleccionados,
+                    onModoChange = mainViewModel::setCostosModo,
+                    onFechaChange = mainViewModel::onFechaChange,
                     onKmInicialChange = mainViewModel::onKmInicialChange,
                     onKmFinalChange = mainViewModel::onKmFinalChange,
                     onRendimientoChange = mainViewModel::onRendimientoChange,
                     onPrecioChange = mainViewModel::onPrecioChange,
                     onNuevoViaje = mainViewModel::nuevoViaje,
-                    onEliminarViaje = mainViewModel::eliminarViaje
+                    onEliminarViaje = mainViewModel::eliminarViaje,
+                    onSemanaAnterior = mainViewModel::semanaAnterior,
+                    onSemanaSiguiente = mainViewModel::semanaSiguiente,
+                    onSemanaActual = mainViewModel::irASemanaActual,
+                    onToggleViaje = mainViewModel::toggleViaje
                 )
 
                 AppTab.CODIGOS -> CodesScreen(
