@@ -24,6 +24,10 @@ interface TripDao {
     @Update
     suspend fun actualizar(trip: TripEntity)
 
+    /** Marca (o desmarca, con null) el pago de la nafta de varios viajes a la vez. */
+    @Query("UPDATE trips SET pagadoEn = :cuando WHERE id IN (:ids)")
+    suspend fun actualizarPago(ids: List<Long>, cuando: Long?)
+
     @Delete
     suspend fun eliminar(trip: TripEntity)
 }
