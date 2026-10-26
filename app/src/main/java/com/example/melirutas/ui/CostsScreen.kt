@@ -38,6 +38,7 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -94,7 +95,8 @@ fun CostsScreen(
     onSemanaAnterior: () -> Unit,
     onSemanaSiguiente: () -> Unit,
     onSemanaActual: () -> Unit,
-    onToggleViaje: (Long) -> Unit
+    onToggleViaje: (Long) -> Unit,
+    onMarcarPagados: (Boolean) -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     var notice by remember { mutableStateOf<String?>(null) }
@@ -195,7 +197,8 @@ fun CostsScreen(
                     onSemanaAnterior = onSemanaAnterior,
                     onSemanaSiguiente = onSemanaSiguiente,
                     onSemanaActual = onSemanaActual,
-                    onToggleViaje = onToggleViaje
+                    onToggleViaje = onToggleViaje,
+                    onMarcarPagados = onMarcarPagados
                 )
             }
         }
@@ -393,9 +396,11 @@ private fun LazyListScope.consolidado(
     onSemanaAnterior: () -> Unit,
     onSemanaSiguiente: () -> Unit,
     onSemanaActual: () -> Unit,
-    onToggleViaje: (Long) -> Unit
+    onToggleViaje: (Long) -> Unit,
+    onMarcarPagados: (Boolean) -> Unit
 ) {
-    val marcados = viajesSemana.count { it.id in viajesSeleccionados }
+    val seleccionados = viajesSemana.filter { it.id in viajesSeleccionados }
+    val marcados = seleccionados.size
 
     item {
         Row(
@@ -455,6 +460,32 @@ private fun LazyListScope.consolidado(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
+            }
+        }
+    }
+
+    if (viajesSemana.isNotEmpty()) {
+        item {
+            val hayPendientes = seleccionados.any { it.pagadoEn == null }
+            val hayPagados = seleccionados.any { it.pagadoEn != null }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                FilledTonalButton(
+                    onClick = { onMarcarPagados(true) },
+                    enabled = hayPendientes,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Marcar pagados")
+                }
+                OutlinedButton(
+                    onClick = { onMarcarPagados(false) },
+                    enabled = hayPagados,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Marcar pendientes")
+                }
             }
         }
     }
@@ -547,12 +578,18 @@ private fun TripHistoryCard(trip: TripEntity, onDelete: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                Text(
-                    text = FECHA_FORMAT.format(Date(fecha)),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = FECHA_FORMAT.format(Date(fecha)),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (trip.pagadoEn != null) {
+                        Spacer(Modifier.size(8.dp))
+                        EtiquetaPagado()
+                    }
+                }
                 Spacer(Modifier.height(6.dp))
                 Text(
                     text = "Km: " + (km?.let { CostCalculator.formatNumber(it, 1) } ?: "—"),
@@ -601,12 +638,18 @@ private fun ConsolidadoTripCard(trip: TripEntity, marcado: Boolean, onToggle: ()
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                Text(
-                    text = FECHA_FORMAT.format(Date(trip.fechaInicio)),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = FECHA_FORMAT.format(Date(trip.fechaInicio)),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (trip.pagadoEn != null) {
+                        Spacer(Modifier.size(8.dp))
+                        EtiquetaPagado()
+                    }
+                }
                 Spacer(Modifier.height(6.dp))
                 Text(
                     text = "Km: " + (km?.let { CostCalculator.formatNumber(it, 1) } ?: "—"),
@@ -628,6 +671,23 @@ private fun ConsolidadoTripCard(trip: TripEntity, marcado: Boolean, onToggle: ()
             }
             Checkbox(checked = marcado, onCheckedChange = { onToggle() })
         }
+    }
+}
+
+/** Leyenda que indica que la nafta de ese viaje ya se pagó. */
+@Composable
+private fun EtiquetaPagado() {
+    Surface(
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        shape = RoundedCornerShape(50)
+    ) {
+        Text(
+            text = "Pagado",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+        )
     }
 }
 

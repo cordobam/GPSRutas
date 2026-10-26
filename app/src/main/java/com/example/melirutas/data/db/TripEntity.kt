@@ -8,7 +8,8 @@ import androidx.room.PrimaryKey
  *
  * Los campos numéricos son nullable para poder guardar un viaje a medio cargar
  * (mientras el usuario tipea). El viaje "abierto" es el que tiene [fechaFin] en null;
- * al cerrarlo pasa al historial.
+ * al cerrarlo pasa al historial. [pagadoEn] en null significa que la nafta todavía
+ * no se rindió; con fecha, que ya se pagó.
  */
 @Entity(tableName = "trips")
 data class TripEntity(
@@ -18,5 +19,6 @@ data class TripEntity(
     val kmInicial: Double?,
     val kmFinal: Double?,
     val rendimiento: Double?,
-    val precioPorLitro: Double?
+    val precioPorLitro: Double?,
+    val pagadoEn: Long? = null
 )

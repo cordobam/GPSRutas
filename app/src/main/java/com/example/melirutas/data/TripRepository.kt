@@ -27,6 +27,13 @@ class TripRepository(private val dao: TripDao) {
     /** Borra un viaje del historial. */
     suspend fun eliminarViaje(trip: TripEntity) = dao.eliminar(trip)
 
+    /** Marca los viajes como pagados (con la fecha de hoy) o los vuelve a pendientes. */
+    suspend fun marcarPagado(viajes: List<TripEntity>, pagado: Boolean) {
+        if (viajes.isEmpty()) return
+        val cuando = if (pagado) System.currentTimeMillis() else null
+        dao.actualizarPago(viajes.map { it.id }, cuando)
+    }
+
     /**
      * Crea o actualiza el viaje abierto con lo que el usuario cargó. No hace nada
      * si todavía no hay km (así no se crean viajes fantasma por solo cambiar el

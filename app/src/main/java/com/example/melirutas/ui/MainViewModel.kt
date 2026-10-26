@@ -177,6 +177,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Marca como pagados (o pendientes) los viajes seleccionados de la semana visible. */
+    fun marcarSeleccionadosPagados(pagado: Boolean) {
+        val seleccionados = _viajesSeleccionados.value
+        val aMarcar = todosCerrados.value.filter { viaje ->
+            viaje.id in seleccionados &&
+                Semana.contiene(_semanaInicio.value, viaje.fechaInicio) &&
+                (viaje.pagadoEn != null) != pagado
+        }
+        if (aMarcar.isEmpty()) return
+        viewModelScope.launch { repository.marcarPagado(aMarcar, pagado) }
+    }
+
     /** Cierra el viaje actual (si tiene datos) y deja el formulario listo para otro. */
     fun nuevoViaje() {
         viewModelScope.launch {

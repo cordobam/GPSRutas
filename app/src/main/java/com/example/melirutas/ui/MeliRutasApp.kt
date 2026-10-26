@@ -98,7 +98,8 @@ fun MeliRutasApp() {
                     onSemanaAnterior = mainViewModel::semanaAnterior,
                     onSemanaSiguiente = mainViewModel::semanaSiguiente,
                     onSemanaActual = mainViewModel::irASemanaActual,
-                    onToggleViaje = mainViewModel::toggleViaje
+                    onToggleViaje = mainViewModel::toggleViaje,
+                    onMarcarPagados = mainViewModel::marcarSeleccionadosPagados
                 )
 
                 AppTab.CODIGOS -> CodesScreen(
