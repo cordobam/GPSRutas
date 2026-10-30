@@ -21,6 +21,17 @@ fun AppBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
             label = { Text("Lote") }
         )
         NavigationBarItem(
+            selected = selected == AppTab.REPARTO,
+            onClick = { onSelect(AppTab.REPARTO) },
+            icon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_tab_reparto),
+                    contentDescription = null
+                )
+            },
+            label = { Text("Reparto") }
+        )
+        NavigationBarItem(
             selected = selected == AppTab.COSTOS,
             onClick = { onSelect(AppTab.COSTOS) },
             icon = {

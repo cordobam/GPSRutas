@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /** Pestañas de la barra inferior. */
-enum class AppTab { LOTE, COSTOS, CODIGOS }
+enum class AppTab { LOTE, REPARTO, COSTOS, CODIGOS }
 
 /** Secciones de la pestaña Costos. */
 enum class CostosModo { VIAJE, CONSOLIDADO }
