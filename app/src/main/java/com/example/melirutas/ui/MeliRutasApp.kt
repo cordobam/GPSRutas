@@ -31,6 +31,7 @@ import androidx.lifecycle.ViewModelProvider
 fun MeliRutasApp() {
     val batchViewModel = rememberBatchViewModel()
     val mainViewModel = rememberMainViewModel()
+    val repartoViewModel = rememberRepartoViewModel()
 
     val tab by mainViewModel.selectedTab.collectAsState()
     val state by batchViewModel.state.collectAsState()
@@ -72,6 +73,8 @@ fun MeliRutasApp() {
                     captures = captures,
                     viewModel = batchViewModel
                 )
+
+                AppTab.REPARTO -> RepartoScreen(viewModel = repartoViewModel)
 
                 AppTab.COSTOS -> CostsScreen(
                     modo = costosModo,
@@ -165,6 +168,14 @@ private fun rememberMainViewModel(): MainViewModel {
     val activity = LocalContext.current as ComponentActivity
     return remember(activity) {
         ViewModelProvider(activity)[MainViewModel::class.java]
+    }
+}
+
+@Composable
+private fun rememberRepartoViewModel(): RepartoViewModel {
+    val activity = LocalContext.current as ComponentActivity
+    return remember(activity) {
+        ViewModelProvider(activity)[RepartoViewModel::class.java]
     }
 }
 
