@@ -20,5 +20,8 @@ data class TripEntity(
     val kmFinal: Double?,
     val rendimiento: Double?,
     val precioPorLitro: Double?,
-    val pagadoEn: Long? = null
+    val pagadoEn: Long? = null,
+    val pagoViaje: Double? = null,
+    val peajeMonto: Double? = null,
+    val peajeDireccion: String? = null
 )

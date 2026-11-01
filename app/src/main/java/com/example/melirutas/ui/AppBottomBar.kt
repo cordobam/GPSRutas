@@ -2,6 +2,7 @@ package com.example.melirutas.ui
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -10,7 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.painterResource
 import com.example.melirutas.R
 
-/** Barra inferior con las tres secciones de la app. */
+/** Barra inferior con las secciones de la app. */
 @Composable
 fun AppBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
     NavigationBar {
@@ -52,6 +53,12 @@ fun AppBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
                 )
             },
             label = { Text("Códigos") }
+        )
+        NavigationBarItem(
+            selected = selected == AppTab.CONFIG,
+            onClick = { onSelect(AppTab.CONFIG) },
+            icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+            label = { Text("Config") }
         )
     }
 }

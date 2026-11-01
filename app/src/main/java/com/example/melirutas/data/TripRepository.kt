@@ -35,21 +35,24 @@ class TripRepository(private val dao: TripDao) {
     }
 
     /**
-     * Crea o actualiza el viaje abierto con lo que el usuario cargó. No hace nada
-     * si todavía no hay km (así no se crean viajes fantasma por solo cambiar el
-     * rendimiento o el precio). `fechaInicio` es la fecha del viaje elegida en el date picker.
+     * Crea o actualiza el viaje abierto con lo que el usuario cargó. Si todavía no
+     * hay un viaje abierto, no crea uno hasta que haya km, pago o peaje (así no se
+     * crean viajes fantasma por solo cambiar el rendimiento o el precio). `fechaInicio`
+     * es la fecha del viaje elegida en el date picker.
      */
     suspend fun guardarBorrador(
         kmInicial: Double?,
         kmFinal: Double?,
         rendimiento: Double?,
         precioPorLitro: Double?,
-        fechaInicio: Long
+        fechaInicio: Long,
+        pagoViaje: Double? = null,
+        peajeMonto: Double? = null,
+        peajeDireccion: String? = null
     ) {
-        if (kmInicial == null && kmFinal == null) return
-
         val abierto = viajeAbierto().first()
         if (abierto == null) {
+            if (kmInicial == null && kmFinal == null && pagoViaje == null && peajeMonto == null) return
             dao.insertar(
                 TripEntity(
                     fechaInicio = fechaInicio,
@@ -57,7 +60,10 @@ class TripRepository(private val dao: TripDao) {
                     kmInicial = kmInicial,
                     kmFinal = kmFinal,
                     rendimiento = rendimiento,
-                    precioPorLitro = precioPorLitro
+                    precioPorLitro = precioPorLitro,
+                    pagoViaje = pagoViaje,
+                    peajeMonto = peajeMonto,
+                    peajeDireccion = peajeDireccion
                 )
             )
         } else {
@@ -67,19 +73,27 @@ class TripRepository(private val dao: TripDao) {
                     kmInicial = kmInicial,
                     kmFinal = kmFinal,
                     rendimiento = rendimiento,
-                    precioPorLitro = precioPorLitro
+                    precioPorLitro = precioPorLitro,
+                    pagoViaje = pagoViaje,
+                    peajeMonto = peajeMonto,
+                    peajeDireccion = peajeDireccion
                 )
             )
         }
     }
 
     /**
-     * Termina el viaje en curso: si tiene km cargados lo pasa al historial; si está
-     * vacío lo descarta. Queda listo para arrancar un viaje nuevo.
+     * Termina el viaje en curso: si tiene km, pago o peaje cargados lo pasa al
+     * historial; si está vacío lo descarta. Queda listo para arrancar un viaje nuevo.
      */
     suspend fun nuevoViaje() {
         val abierto = viajeAbierto().first() ?: return
-        if (abierto.kmInicial == null && abierto.kmFinal == null) {
+        val sinDatos = abierto.kmInicial == null &&
+            abierto.kmFinal == null &&
+            abierto.pagoViaje == null &&
+            abierto.peajeMonto == null &&
+            abierto.peajeDireccion == null
+        if (sinDatos) {
             dao.eliminar(abierto)
         } else {
             dao.actualizar(abierto.copy(fechaFin = System.currentTimeMillis()))

@@ -24,6 +24,9 @@ class AppPreferences(context: Context) {
     private val _kmPerLiter = MutableStateFlow(readDouble(KEY_KM_PER_LITER))
     val kmPerLiter: StateFlow<Double> = _kmPerLiter.asStateFlow()
 
+    private val _tollPrice = MutableStateFlow(readDouble(KEY_TOLL_PRICE))
+    val tollPrice: StateFlow<Double> = _tollPrice.asStateFlow()
+
     /**
      * Agrega un código. Devuelve false si está vacío o si ya existía (no distingue mayúsculas).
      */
@@ -63,6 +66,12 @@ class AppPreferences(context: Context) {
         prefs.edit().putString(KEY_KM_PER_LITER, value.toString()).apply()
     }
 
+    fun setTollPrice(value: Double) {
+        if (value < 0.0) return
+        _tollPrice.value = value
+        prefs.edit().putString(KEY_TOLL_PRICE, value.toString()).apply()
+    }
+
     private fun persistCodes() {
         prefs.edit().putString(KEY_CODES, _codes.value.joinToString(SEPARATOR)).apply()
     }
@@ -80,6 +89,7 @@ class AppPreferences(context: Context) {
         const val KEY_CODES = "trip_codes"
         const val KEY_PRICE_PER_LITER = "price_per_liter"
         const val KEY_KM_PER_LITER = "km_per_liter"
+        const val KEY_TOLL_PRICE = "toll_price"
         const val SEPARATOR = "\n"
     }
 }

@@ -29,6 +29,18 @@ object CostCalculator {
         return litros * precioPorLitro
     }
 
+    /** Costo del peaje según la dirección. null si falta la tarifa o la dirección. */
+    fun peaje(tarifaPorCruce: Double?, direccion: PeajeDireccion?): Double? {
+        if (tarifaPorCruce == null || direccion == null) return null
+        return tarifaPorCruce * direccion.factor
+    }
+
+    /** Lo que queda del pago después de descontar combustible y peaje. */
+    fun neto(pago: Double?, costoCombustible: Double?, peaje: Double?): Double? {
+        if (pago == null || costoCombustible == null) return null
+        return pago - costoCombustible - (peaje ?: 0.0)
+    }
+
     /**
      * Convierte lo que el usuario escribió a número, aceptando coma o punto como
      * separador decimal ("1,5" y "1.5" dan 1.5) y puntos como separador de miles
