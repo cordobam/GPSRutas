@@ -43,6 +43,13 @@ fun MeliRutasApp() {
     val kmRecorridosText by mainViewModel.kmRecorridosText.collectAsState()
     val litrosText by mainViewModel.litrosText.collectAsState()
     val costoTotalText by mainViewModel.costoTotalText.collectAsState()
+    val pagoViajeText by mainViewModel.pagoViajeText.collectAsState()
+    val peajeUsado by mainViewModel.peajeUsado.collectAsState()
+    val peajeDireccion by mainViewModel.peajeDireccion.collectAsState()
+    val pagoText by mainViewModel.pagoText.collectAsState()
+    val peajeTotalText by mainViewModel.peajeTotalText.collectAsState()
+    val netoText by mainViewModel.netoText.collectAsState()
+    val netoNegativo by mainViewModel.netoNegativo.collectAsState()
     val historial by mainViewModel.historial.collectAsState()
     val costosModo by mainViewModel.costosModo.collectAsState()
     val fechaViaje by mainViewModel.fechaViaje.collectAsState()
@@ -50,6 +57,8 @@ fun MeliRutasApp() {
     val semanaInicio by mainViewModel.semanaInicio.collectAsState()
     val viajesSeleccionados by mainViewModel.viajesSeleccionados.collectAsState()
     val codes by mainViewModel.codes.collectAsState()
+    val precioPeajeText by mainViewModel.precioPeajeText.collectAsState()
+    val tarifaPeajeText by mainViewModel.tarifaPeajeText.collectAsState()
 
     val hideBar = tab == AppTab.LOTE &&
         (state is BatchViewModel.BatchState.Capture || state is BatchViewModel.BatchState.Processing)
@@ -83,9 +92,17 @@ fun MeliRutasApp() {
                     kmFinalText = kmFinalText,
                     rendimientoText = rendimientoText,
                     precioText = precioText,
+                    pagoViajeText = pagoViajeText,
+                    peajeUsado = peajeUsado,
+                    peajeDireccion = peajeDireccion,
                     kmRecorridosText = kmRecorridosText,
                     litrosText = litrosText,
                     costoTotalText = costoTotalText,
+                    tarifaPeajeText = tarifaPeajeText,
+                    pagoText = pagoText,
+                    peajeTotalText = peajeTotalText,
+                    netoText = netoText,
+                    netoNegativo = netoNegativo,
                     historial = historial,
                     todosCerrados = todosCerrados,
                     semanaInicio = semanaInicio,
@@ -96,6 +113,9 @@ fun MeliRutasApp() {
                     onKmFinalChange = mainViewModel::onKmFinalChange,
                     onRendimientoChange = mainViewModel::onRendimientoChange,
                     onPrecioChange = mainViewModel::onPrecioChange,
+                    onPagoViajeChange = mainViewModel::onPagoViajeChange,
+                    onPeajeUsadoChange = mainViewModel::onPeajeUsadoChange,
+                    onPeajeDireccionChange = mainViewModel::onPeajeDireccionChange,
                     onNuevoViaje = mainViewModel::nuevoViaje,
                     onEliminarViaje = mainViewModel::eliminarViaje,
                     onSemanaAnterior = mainViewModel::semanaAnterior,
@@ -110,6 +130,12 @@ fun MeliRutasApp() {
                     onAdd = mainViewModel::addCode,
                     onRemove = mainViewModel::removeCode,
                     onClear = mainViewModel::clearCodes
+                )
+
+                AppTab.CONFIG -> ConfigScreen(
+                    precioPeajeText = precioPeajeText,
+                    tarifaPeajeText = tarifaPeajeText,
+                    onPrecioPeajeChange = mainViewModel::onPrecioPeajeChange
                 )
             }
         }

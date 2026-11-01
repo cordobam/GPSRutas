@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [TripEntity::class], version = 2, exportSchema = false)
+@Database(entities = [TripEntity::class], version = 3, exportSchema = false)
 abstract class MeliRutasDatabase : RoomDatabase() {
 
     abstract fun tripDao(): TripDao
@@ -23,6 +23,15 @@ abstract class MeliRutasDatabase : RoomDatabase() {
             }
         }
 
+        /** Agrega el pago del viaje y el peaje sin perder los viajes ya guardados. */
+        private val MIGRACION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE trips ADD COLUMN pagoViaje REAL")
+                db.execSQL("ALTER TABLE trips ADD COLUMN peajeMonto REAL")
+                db.execSQL("ALTER TABLE trips ADD COLUMN peajeDireccion TEXT")
+            }
+        }
+
         fun getInstance(context: Context): MeliRutasDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -30,7 +39,7 @@ abstract class MeliRutasDatabase : RoomDatabase() {
                     MeliRutasDatabase::class.java,
                     "meli_rutas.db"
                 )
-                    .addMigrations(MIGRACION_1_2)
+                    .addMigrations(MIGRACION_1_2, MIGRACION_2_3)
                     .build()
                     .also { instance = it }
             }

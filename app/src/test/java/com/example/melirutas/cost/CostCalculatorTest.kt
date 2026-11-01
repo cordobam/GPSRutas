@@ -72,6 +72,62 @@ class CostCalculatorTest {
     }
 
     @Test
+    fun peaje_ida() {
+        assertEquals(1500.0, CostCalculator.peaje(1500.0, PeajeDireccion.IDA)!!, 0.001)
+    }
+
+    @Test
+    fun peaje_vuelta() {
+        assertEquals(1500.0, CostCalculator.peaje(1500.0, PeajeDireccion.VUELTA)!!, 0.001)
+    }
+
+    @Test
+    fun peaje_idaVuelta() {
+        assertEquals(3000.0, CostCalculator.peaje(1500.0, PeajeDireccion.IDA_VUELTA)!!, 0.001)
+    }
+
+    @Test
+    fun peaje_faltaDato_null() {
+        assertEquals(null, CostCalculator.peaje(null, PeajeDireccion.IDA))
+        assertEquals(null, CostCalculator.peaje(1500.0, null))
+    }
+
+    @Test
+    fun neto_completo() {
+        assertEquals(20000.0, CostCalculator.neto(30000.0, 8000.0, 2000.0)!!, 0.001)
+    }
+
+    @Test
+    fun neto_sinPeaje() {
+        assertEquals(22000.0, CostCalculator.neto(30000.0, 8000.0, null)!!, 0.001)
+    }
+
+    @Test
+    fun neto_sinPago_null() {
+        assertEquals(null, CostCalculator.neto(null, 8000.0, 2000.0))
+    }
+
+    @Test
+    fun neto_sinCombustible_null() {
+        assertEquals(null, CostCalculator.neto(30000.0, null, 2000.0))
+    }
+
+    @Test
+    fun neto_negativo() {
+        assertEquals(-5000.0, CostCalculator.neto(5000.0, 8000.0, 2000.0)!!, 0.001)
+    }
+
+    @Test
+    fun viajeCompleto_conPeajeYNeto() {
+        val km = CostCalculator.recorrido(1000.0, 1350.0)
+        val litros = CostCalculator.litros(km, 10.0)
+        val combustible = CostCalculator.costo(litros, 1500.0)
+        val peaje = CostCalculator.peaje(2000.0, PeajeDireccion.IDA_VUELTA)
+        val neto = CostCalculator.neto(60000.0, combustible, peaje)
+        assertEquals(3500.0, neto!!, 0.001)
+    }
+
+    @Test
     fun parseDecimal_conComa() {
         assertEquals(1.5, CostCalculator.parseDecimal("1,5")!!, 0.0001)
     }

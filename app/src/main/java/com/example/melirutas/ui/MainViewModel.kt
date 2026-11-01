@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.melirutas.cost.CostCalculator
+import com.example.melirutas.cost.PeajeDireccion
 import com.example.melirutas.cost.Semana
 import com.example.melirutas.data.AppPreferences
 import com.example.melirutas.data.TripRepository
@@ -22,7 +23,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /** Pestañas de la barra inferior. */
-enum class AppTab { LOTE, REPARTO, COSTOS, CODIGOS }
+enum class AppTab { LOTE, REPARTO, COSTOS, CODIGOS, CONFIG }
 
 /** Secciones de la pestaña Costos. */
 enum class CostosModo { VIAJE, CONSOLIDADO }
@@ -53,6 +54,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _precioText = MutableStateFlow(plainNumber(prefs.pricePerLiter.value))
     val precioText: StateFlow<String> = _precioText.asStateFlow()
 
+    private val _pagoViajeText = MutableStateFlow("")
+    val pagoViajeText: StateFlow<String> = _pagoViajeText.asStateFlow()
+
+    private val _peajeUsado = MutableStateFlow(false)
+    val peajeUsado: StateFlow<Boolean> = _peajeUsado.asStateFlow()
+
+    private val _peajeDireccion = MutableStateFlow(PeajeDireccion.IDA_VUELTA)
+    val peajeDireccion: StateFlow<PeajeDireccion> = _peajeDireccion.asStateFlow()
+
+    private val _precioPeajeText = MutableStateFlow(plainNumber(prefs.tollPrice.value))
+    val precioPeajeText: StateFlow<String> = _precioPeajeText.asStateFlow()
+
     /** Fecha elegida para el viaje en curso (la usa el date picker de Costos). */
     private val _fechaViaje = MutableStateFlow(System.currentTimeMillis())
     val fechaViaje: StateFlow<Long> = _fechaViaje.asStateFlow()
@@ -78,13 +91,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         .map { litros -> litros?.let { "${CostCalculator.formatNumber(it, 2)} l" } ?: SIN_DATO }
         .stateIn(viewModelScope, SharingStarted.Eagerly, SIN_DATO)
 
+    private val costoCombustible = combine(litrosEstimados, _precioText) { litros, precio ->
+        CostCalculator.costo(litros, CostCalculator.parseDecimal(precio))
+    }
+
     /** Costo total ("$ 52.500,00") o "—". */
-    val costoTotalText: StateFlow<String> =
-        combine(litrosEstimados, _precioText) { litros, precio ->
-            CostCalculator.costo(litros, CostCalculator.parseDecimal(precio))
-        }
-            .map { costo -> costo?.let { CostCalculator.formatCurrency(it) } ?: SIN_DATO }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, SIN_DATO)
+    val costoTotalText: StateFlow<String> = costoCombustible
+        .map { costo -> costo?.let { CostCalculator.formatCurrency(it) } ?: SIN_DATO }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SIN_DATO)
+
+    private val pago = _pagoViajeText.map { CostCalculator.parseDecimal(it) }
+
+    private val peajeTotal = combine(_peajeUsado, _peajeDireccion, prefs.tollPrice) { usado, direccion, tarifa ->
+        if (usado) CostCalculator.peaje(tarifa, direccion) else null
+    }
+
+    /** Pago del viaje ("$ 80.000,00") o "—". */
+    val pagoText: StateFlow<String> = pago
+        .map { valor -> valor?.let { CostCalculator.formatCurrency(it) } ?: SIN_DATO }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SIN_DATO)
+
+    /** Precio del peaje por cruce ("$ 1.500,00"). */
+    val tarifaPeajeText: StateFlow<String> = prefs.tollPrice
+        .map { CostCalculator.formatCurrency(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, CostCalculator.formatCurrency(0.0))
+
+    /** Peaje total del viaje ("$ 3.000,00") o "$ 0,00" si no se usó. */
+    val peajeTotalText: StateFlow<String> = peajeTotal
+        .map { valor -> valor?.let { CostCalculator.formatCurrency(it) } ?: CostCalculator.formatCurrency(0.0) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, CostCalculator.formatCurrency(0.0))
+
+    private val neto = combine(pago, costoCombustible, peajeTotal) { pago, costo, peaje ->
+        CostCalculator.neto(pago, costo, peaje)
+    }
+
+    /** Lo que queda después de combustible y peaje ("$ 26.500,00") o "—". */
+    val netoText: StateFlow<String> = neto
+        .map { valor -> valor?.let { CostCalculator.formatCurrency(it) } ?: SIN_DATO }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SIN_DATO)
+
+    val netoNegativo: StateFlow<Boolean> = neto
+        .map { valor -> valor != null && valor < 0.0 }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     /** Viajes finalizados de los últimos 7 días, del más reciente al más viejo. */
     val historial: StateFlow<List<TripEntity>> = repository.historial()
@@ -115,6 +163,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 viaje.kmFinal?.let { _kmFinalText.value = plainNumber(it) }
                 viaje.rendimiento?.let { _rendimientoText.value = plainNumber(it) }
                 viaje.precioPorLitro?.let { _precioText.value = plainNumber(it) }
+                viaje.pagoViaje?.let { _pagoViajeText.value = plainNumber(it) }
+                if (viaje.peajeDireccion != null || viaje.peajeMonto != null) {
+                    _peajeUsado.value = true
+                    viaje.peajeDireccion?.let { nombre ->
+                        _peajeDireccion.value = runCatching { PeajeDireccion.valueOf(nombre) }
+                            .getOrDefault(PeajeDireccion.IDA_VUELTA)
+                    }
+                }
                 _fechaViaje.value = viaje.fechaInicio
             }
         }
@@ -147,6 +203,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun onPrecioChange(value: String) {
         _precioText.value = value
         CostCalculator.parseDecimal(value)?.let { prefs.setPricePerLiter(it) }
+        programarGuardado()
+    }
+
+    fun onPagoViajeChange(value: String) {
+        _pagoViajeText.value = value
+        programarGuardado()
+    }
+
+    fun onPeajeUsadoChange(usado: Boolean) {
+        _peajeUsado.value = usado
+        programarGuardado()
+    }
+
+    fun onPeajeDireccionChange(direccion: PeajeDireccion) {
+        _peajeDireccion.value = direccion
+        programarGuardado()
+    }
+
+    fun onPrecioPeajeChange(value: String) {
+        _precioPeajeText.value = value
+        CostCalculator.parseDecimal(value)?.let { prefs.setTollPrice(it) }
         programarGuardado()
     }
 
@@ -198,13 +275,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 kmFinal = CostCalculator.parseDecimal(_kmFinalText.value),
                 rendimiento = CostCalculator.parseDecimal(_rendimientoText.value),
                 precioPorLitro = CostCalculator.parseDecimal(_precioText.value),
-                fechaInicio = _fechaViaje.value
+                fechaInicio = _fechaViaje.value,
+                pagoViaje = CostCalculator.parseDecimal(_pagoViajeText.value),
+                peajeMonto = peajeActual(),
+                peajeDireccion = if (_peajeUsado.value) _peajeDireccion.value.name else null
             )
             repository.nuevoViaje()
             _kmInicialText.value = ""
             _kmFinalText.value = ""
             _rendimientoText.value = plainNumber(prefs.kmPerLiter.value)
             _precioText.value = plainNumber(prefs.pricePerLiter.value)
+            _pagoViajeText.value = ""
+            _peajeUsado.value = false
+            _peajeDireccion.value = PeajeDireccion.IDA_VUELTA
             _fechaViaje.value = System.currentTimeMillis()
         }
     }
@@ -235,10 +318,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 kmFinal = CostCalculator.parseDecimal(_kmFinalText.value),
                 rendimiento = CostCalculator.parseDecimal(_rendimientoText.value),
                 precioPorLitro = CostCalculator.parseDecimal(_precioText.value),
-                fechaInicio = _fechaViaje.value
+                fechaInicio = _fechaViaje.value,
+                pagoViaje = CostCalculator.parseDecimal(_pagoViajeText.value),
+                peajeMonto = peajeActual(),
+                peajeDireccion = if (_peajeUsado.value) _peajeDireccion.value.name else null
             )
         }
     }
+
+    private fun peajeActual(): Double? =
+        if (_peajeUsado.value) {
+            CostCalculator.peaje(prefs.tollPrice.value, _peajeDireccion.value)
+        } else {
+            null
+        }
 
     private fun plainNumber(value: Double): String = when {
         value <= 0.0 -> ""

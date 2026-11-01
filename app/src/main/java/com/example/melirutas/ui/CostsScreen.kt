@@ -57,6 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.melirutas.cost.CostCalculator
+import com.example.melirutas.cost.PeajeDireccion
 import com.example.melirutas.cost.Semana
 import com.example.melirutas.data.db.TripEntity
 import java.text.SimpleDateFormat
@@ -77,9 +78,17 @@ fun CostsScreen(
     kmFinalText: String,
     rendimientoText: String,
     precioText: String,
+    pagoViajeText: String,
+    peajeUsado: Boolean,
+    peajeDireccion: PeajeDireccion,
     kmRecorridosText: String,
     litrosText: String,
     costoTotalText: String,
+    tarifaPeajeText: String,
+    pagoText: String,
+    peajeTotalText: String,
+    netoText: String,
+    netoNegativo: Boolean,
     historial: List<TripEntity>,
     todosCerrados: List<TripEntity>,
     semanaInicio: Long,
@@ -90,6 +99,9 @@ fun CostsScreen(
     onKmFinalChange: (String) -> Unit,
     onRendimientoChange: (String) -> Unit,
     onPrecioChange: (String) -> Unit,
+    onPagoViajeChange: (String) -> Unit,
+    onPeajeUsadoChange: (Boolean) -> Unit,
+    onPeajeDireccionChange: (PeajeDireccion) -> Unit,
     onNuevoViaje: () -> Unit,
     onEliminarViaje: (TripEntity) -> Unit,
     onSemanaAnterior: () -> Unit,
@@ -106,16 +118,6 @@ fun CostsScreen(
     val viajePorBorrar = historial.firstOrNull { it.id == confirmarBorrarId }
 
     val viajesSemana = todosCerrados.filter { Semana.contiene(semanaInicio, it.fechaInicio) }
-    val seleccionados = viajesSemana.filter { it.id in viajesSeleccionados }
-    val totalNafta = seleccionados.sumOf { viaje ->
-        CostCalculator.costo(
-            CostCalculator.litros(
-                CostCalculator.recorrido(viaje.kmInicial, viaje.kmFinal),
-                viaje.rendimiento
-            ),
-            viaje.precioPorLitro
-        ) ?: 0.0
-    }
     val semanaActual = Semana.inicioDe(System.currentTimeMillis())
     val etiquetaSemana =
         SEMANA_FORMAT.format(Date(semanaInicio)) + " al " +
@@ -172,15 +174,26 @@ fun CostsScreen(
                     kmFinalText = kmFinalText,
                     rendimientoText = rendimientoText,
                     precioText = precioText,
+                    pagoViajeText = pagoViajeText,
+                    peajeUsado = peajeUsado,
+                    peajeDireccion = peajeDireccion,
                     kmRecorridosText = kmRecorridosText,
                     litrosText = litrosText,
                     costoTotalText = costoTotalText,
+                    tarifaPeajeText = tarifaPeajeText,
+                    pagoText = pagoText,
+                    peajeTotalText = peajeTotalText,
+                    netoText = netoText,
+                    netoNegativo = netoNegativo,
                     historial = historial,
                     onPedirFecha = { mostrarDatePicker = true },
                     onKmInicialChange = onKmInicialChange,
                     onKmFinalChange = onKmFinalChange,
                     onRendimientoChange = onRendimientoChange,
                     onPrecioChange = onPrecioChange,
+                    onPagoViajeChange = onPagoViajeChange,
+                    onPeajeUsadoChange = onPeajeUsadoChange,
+                    onPeajeDireccionChange = onPeajeDireccionChange,
                     onNuevoViaje = onNuevoViaje,
                     onEliminarViaje = { viaje ->
                         confirmarBorrarId = viaje.id
@@ -193,7 +206,6 @@ fun CostsScreen(
                     semanaInicio = semanaInicio,
                     viajesSemana = viajesSemana,
                     viajesSeleccionados = viajesSeleccionados,
-                    totalNafta = totalNafta,
                     onSemanaAnterior = onSemanaAnterior,
                     onSemanaSiguiente = onSemanaSiguiente,
                     onSemanaActual = onSemanaActual,
@@ -269,15 +281,26 @@ private fun LazyListScope.viajeFormulario(
     kmFinalText: String,
     rendimientoText: String,
     precioText: String,
+    pagoViajeText: String,
+    peajeUsado: Boolean,
+    peajeDireccion: PeajeDireccion,
     kmRecorridosText: String,
     litrosText: String,
     costoTotalText: String,
+    tarifaPeajeText: String,
+    pagoText: String,
+    peajeTotalText: String,
+    netoText: String,
+    netoNegativo: Boolean,
     historial: List<TripEntity>,
     onPedirFecha: () -> Unit,
     onKmInicialChange: (String) -> Unit,
     onKmFinalChange: (String) -> Unit,
     onRendimientoChange: (String) -> Unit,
     onPrecioChange: (String) -> Unit,
+    onPagoViajeChange: (String) -> Unit,
+    onPeajeUsadoChange: (Boolean) -> Unit,
+    onPeajeDireccionChange: (PeajeDireccion) -> Unit,
     onNuevoViaje: () -> Unit,
     onEliminarViaje: (TripEntity) -> Unit
 ) {
@@ -295,6 +318,18 @@ private fun LazyListScope.viajeFormulario(
                 style = MaterialTheme.typography.bodyLarge
             )
         }
+    }
+
+    item {
+        OutlinedTextField(
+            value = pagoViajeText,
+            onValueChange = onPagoViajeChange,
+            label = { Text("Me pagan por el viaje") },
+            prefix = { Text("$ ") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 
     item {
@@ -344,7 +379,28 @@ private fun LazyListScope.viajeFormulario(
         )
     }
 
-    item { ResultsCard(kmRecorridosText, litrosText, costoTotalText) }
+    item {
+        PeajeCard(
+            usado = peajeUsado,
+            direccion = peajeDireccion,
+            tarifa = tarifaPeajeText,
+            total = peajeTotalText,
+            onUsadoChange = onPeajeUsadoChange,
+            onDireccionChange = onPeajeDireccionChange
+        )
+    }
+
+    item {
+        ResultsCard(
+            kmRecorridos = kmRecorridosText,
+            litros = litrosText,
+            costoCombustible = costoTotalText,
+            peajeTotal = peajeTotalText,
+            pago = pagoText,
+            neto = netoText,
+            netoNegativo = netoNegativo
+        )
+    }
 
     item {
         FilledTonalButton(
@@ -392,7 +448,6 @@ private fun LazyListScope.consolidado(
     semanaInicio: Long,
     viajesSemana: List<TripEntity>,
     viajesSeleccionados: Set<Long>,
-    totalNafta: Double,
     onSemanaAnterior: () -> Unit,
     onSemanaSiguiente: () -> Unit,
     onSemanaActual: () -> Unit,
@@ -401,6 +456,14 @@ private fun LazyListScope.consolidado(
 ) {
     val seleccionados = viajesSemana.filter { it.id in viajesSeleccionados }
     val marcados = seleccionados.size
+    val conPago = seleccionados.filter { it.pagoViaje != null && costoCombustibleDe(it) != null }
+    val totalNafta = seleccionados.sumOf { costoCombustibleDe(it) ?: 0.0 }
+    val totalPeaje = seleccionados.sumOf { peajeDe(it) ?: 0.0 }
+    val totalNaftaConPago = conPago.sumOf { costoCombustibleDe(it) ?: 0.0 }
+    val totalPeajeConPago = conPago.sumOf { peajeDe(it) ?: 0.0 }
+    val totalCobrado = conPago.sumOf { it.pagoViaje ?: 0.0 }
+    val totalNeto = totalCobrado - totalNaftaConPago - totalPeajeConPago
+    val fueraDelNeto = seleccionados.size - conPago.size
 
     item {
         Row(
@@ -453,13 +516,56 @@ private fun LazyListScope.consolidado(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = "Total de nafta: " + CostCalculator.formatCurrency(totalNafta),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                Spacer(Modifier.height(8.dp))
+                ResultRow(
+                    label = "Nafta de los marcados",
+                    value = CostCalculator.formatCurrency(totalNafta)
                 )
+                Spacer(Modifier.height(4.dp))
+                ResultRow(
+                    label = "Peajes de los marcados",
+                    value = CostCalculator.formatCurrency(totalPeaje)
+                )
+                if (conPago.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "Neto de ${conPago.size} viajes con pago",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = CostCalculator.formatCurrency(totalNeto),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (totalNeto < 0.0) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        }
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    ResultRow("Cobrado", CostCalculator.formatCurrency(totalCobrado))
+                    Spacer(Modifier.height(4.dp))
+                    ResultRow("Nafta (con pago)", CostCalculator.formatCurrency(totalNaftaConPago))
+                    Spacer(Modifier.height(4.dp))
+                    ResultRow("Peajes (con pago)", CostCalculator.formatCurrency(totalPeajeConPago))
+                } else if (seleccionados.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "Cargá \"me pagan\" y completá los km para ver el neto.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                if (fueraDelNeto > 0 && conPago.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "$fueraDelNeto viaje(s) sin pago o sin km no incluido(s) en el neto.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
             }
         }
     }
@@ -511,8 +617,99 @@ private fun LazyListScope.consolidado(
     item { Spacer(Modifier.height(18.dp)) }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ResultsCard(kmRecorridos: String, litros: String, costoTotal: String) {
+private fun PeajeCard(
+    usado: Boolean,
+    direccion: PeajeDireccion,
+    tarifa: String,
+    total: String,
+    onUsadoChange: (Boolean) -> Unit,
+    onDireccionChange: (PeajeDireccion) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = usado, onCheckedChange = onUsadoChange)
+                Text(
+                    text = "Usé peaje",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (usado) {
+                Spacer(Modifier.height(8.dp))
+                val opciones = PeajeDireccion.values()
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    opciones.forEachIndexed { index, opcion ->
+                        SegmentedButton(
+                            selected = direccion == opcion,
+                            onClick = { onDireccionChange(opcion) },
+                            shape = SegmentedButtonDefaults.itemShape(
+                                index = index,
+                                count = opciones.size
+                            ),
+                            label = { Text(opcion.etiqueta) }
+                        )
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Peaje por cruce",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = tarifa,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Total peaje",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = total,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "El precio por cruce se configura en Config.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResultsCard(
+    kmRecorridos: String,
+    litros: String,
+    costoCombustible: String,
+    peajeTotal: String,
+    pago: String,
+    neto: String,
+    netoNegativo: Boolean
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -524,18 +721,28 @@ private fun ResultsCard(kmRecorridos: String, litros: String, costoTotal: String
             ResultRow("Km recorridos", kmRecorridos)
             Spacer(Modifier.height(8.dp))
             ResultRow("Litros a cargar", litros)
+            Spacer(Modifier.height(8.dp))
+            ResultRow("Costo combustible", costoCombustible)
+            Spacer(Modifier.height(8.dp))
+            ResultRow("Peaje", peajeTotal)
+            Spacer(Modifier.height(8.dp))
+            ResultRow("Me pagan", pago)
             Spacer(Modifier.height(12.dp))
             Text(
-                text = "Costo total del viaje",
+                text = "Me queda",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = costoTotal,
+                text = neto,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = if (netoNegativo) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                }
             )
         }
     }
@@ -563,7 +770,9 @@ private fun ResultRow(label: String, value: String) {
 private fun TripHistoryCard(trip: TripEntity, onDelete: () -> Unit) {
     val km = CostCalculator.recorrido(trip.kmInicial, trip.kmFinal)
     val litros = CostCalculator.litros(km, trip.rendimiento)
-    val costo = CostCalculator.costo(litros, trip.precioPorLitro)
+    val costo = costoCombustibleDe(trip)
+    val peaje = peajeDe(trip)
+    val neto = CostCalculator.neto(trip.pagoViaje, costo, peaje)
     val fecha = trip.fechaInicio
 
     Card(
@@ -601,12 +810,31 @@ private fun TripHistoryCard(trip: TripEntity, onDelete: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Text(
+                    text = "Combustible: " + monto(costo),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Peaje: " + monto(peaje ?: 0.0),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Me pagan: " + monto(trip.pagoViaje),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Costo: " + (costo?.let { CostCalculator.formatCurrency(it) } ?: "—"),
+                    text = "Neto: " + monto(neto),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = if (neto != null && neto < 0.0) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    }
                 )
             }
             IconButton(onClick = onDelete) {
@@ -624,7 +852,9 @@ private fun TripHistoryCard(trip: TripEntity, onDelete: () -> Unit) {
 private fun ConsolidadoTripCard(trip: TripEntity, marcado: Boolean, onToggle: () -> Unit) {
     val km = CostCalculator.recorrido(trip.kmInicial, trip.kmFinal)
     val litros = CostCalculator.litros(km, trip.rendimiento)
-    val costo = CostCalculator.costo(litros, trip.precioPorLitro)
+    val costo = costoCombustibleDe(trip)
+    val peaje = peajeDe(trip)
+    val neto = CostCalculator.neto(trip.pagoViaje, costo, peaje)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -661,12 +891,31 @@ private fun ConsolidadoTripCard(trip: TripEntity, marcado: Boolean, onToggle: ()
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Text(
+                    text = "Combustible: " + monto(costo),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Peaje: " + monto(peaje ?: 0.0),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Me pagan: " + monto(trip.pagoViaje),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Costo: " + (costo?.let { CostCalculator.formatCurrency(it) } ?: "—"),
+                    text = "Neto: " + monto(neto),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = if (neto != null && neto < 0.0) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    }
                 )
             }
             Checkbox(checked = marcado, onCheckedChange = { onToggle() })
@@ -690,6 +939,21 @@ private fun EtiquetaPagado() {
         )
     }
 }
+
+private fun costoCombustibleDe(trip: TripEntity): Double? =
+    CostCalculator.costo(
+        CostCalculator.litros(
+            CostCalculator.recorrido(trip.kmInicial, trip.kmFinal),
+            trip.rendimiento
+        ),
+        trip.precioPorLitro
+    )
+
+private fun peajeDe(trip: TripEntity): Double? =
+    if (trip.peajeDireccion != null || trip.peajeMonto != null) trip.peajeMonto else null
+
+private fun monto(value: Double?): String =
+    value?.let { CostCalculator.formatCurrency(it) } ?: "—"
 
 /**
  * El DatePicker devuelve medianoche UTC; esto lo convierte a mediodía local de esa
