@@ -40,6 +40,8 @@ fun MeliRutasApp() {
     val kmFinalText by mainViewModel.kmFinalText.collectAsState()
     val rendimientoText by mainViewModel.rendimientoText.collectAsState()
     val precioText by mainViewModel.precioText.collectAsState()
+    val precioNaftaActualText by mainViewModel.precioNaftaActualText.collectAsState()
+    val rendimientoActualText by mainViewModel.rendimientoActualText.collectAsState()
     val kmRecorridosText by mainViewModel.kmRecorridosText.collectAsState()
     val litrosText by mainViewModel.litrosText.collectAsState()
     val costoTotalText by mainViewModel.costoTotalText.collectAsState()
@@ -90,8 +92,6 @@ fun MeliRutasApp() {
                     fechaViaje = fechaViaje,
                     kmInicialText = kmInicialText,
                     kmFinalText = kmFinalText,
-                    rendimientoText = rendimientoText,
-                    precioText = precioText,
                     pagoViajeText = pagoViajeText,
                     peajeUsado = peajeUsado,
                     peajeDireccion = peajeDireccion,
@@ -111,8 +111,6 @@ fun MeliRutasApp() {
                     onFechaChange = mainViewModel::onFechaChange,
                     onKmInicialChange = mainViewModel::onKmInicialChange,
                     onKmFinalChange = mainViewModel::onKmFinalChange,
-                    onRendimientoChange = mainViewModel::onRendimientoChange,
-                    onPrecioChange = mainViewModel::onPrecioChange,
                     onPagoViajeChange = mainViewModel::onPagoViajeChange,
                     onPeajeUsadoChange = mainViewModel::onPeajeUsadoChange,
                     onPeajeDireccionChange = mainViewModel::onPeajeDireccionChange,
@@ -133,8 +131,14 @@ fun MeliRutasApp() {
                 )
 
                 AppTab.CONFIG -> ConfigScreen(
+                    precioNaftaText = precioText,
+                    precioNaftaActualText = precioNaftaActualText,
+                    rendimientoText = rendimientoText,
+                    rendimientoActualText = rendimientoActualText,
                     precioPeajeText = precioPeajeText,
                     tarifaPeajeText = tarifaPeajeText,
+                    onPrecioNaftaChange = mainViewModel::onPrecioChange,
+                    onRendimientoChange = mainViewModel::onRendimientoChange,
                     onPrecioPeajeChange = mainViewModel::onPrecioPeajeChange
                 )
             }

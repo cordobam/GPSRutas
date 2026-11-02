@@ -54,6 +54,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _precioText = MutableStateFlow(plainNumber(prefs.pricePerLiter.value))
     val precioText: StateFlow<String> = _precioText.asStateFlow()
 
+    /** Precio de la nafta por litro ("$ 1.500,00"). */
+    val precioNaftaActualText: StateFlow<String> = prefs.pricePerLiter
+        .map { CostCalculator.formatCurrency(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, CostCalculator.formatCurrency(0.0))
+
+    /** Rendimiento del auto ("12,5 km/l") o "—" si no está configurado. */
+    val rendimientoActualText: StateFlow<String> = prefs.kmPerLiter
+        .map { kmPorLitro ->
+            if (kmPorLitro <= 0.0) {
+                SIN_DATO
+            } else {
+                "${CostCalculator.formatNumber(kmPorLitro, 2)} km/l"
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SIN_DATO)
+
     private val _pagoViajeText = MutableStateFlow("")
     val pagoViajeText: StateFlow<String> = _pagoViajeText.asStateFlow()
 
