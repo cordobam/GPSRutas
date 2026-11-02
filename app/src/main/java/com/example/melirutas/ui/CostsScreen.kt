@@ -76,8 +76,6 @@ fun CostsScreen(
     fechaViaje: Long,
     kmInicialText: String,
     kmFinalText: String,
-    rendimientoText: String,
-    precioText: String,
     pagoViajeText: String,
     peajeUsado: Boolean,
     peajeDireccion: PeajeDireccion,
@@ -97,8 +95,6 @@ fun CostsScreen(
     onFechaChange: (Long) -> Unit,
     onKmInicialChange: (String) -> Unit,
     onKmFinalChange: (String) -> Unit,
-    onRendimientoChange: (String) -> Unit,
-    onPrecioChange: (String) -> Unit,
     onPagoViajeChange: (String) -> Unit,
     onPeajeUsadoChange: (Boolean) -> Unit,
     onPeajeDireccionChange: (PeajeDireccion) -> Unit,
@@ -172,8 +168,6 @@ fun CostsScreen(
                     fechaViaje = fechaViaje,
                     kmInicialText = kmInicialText,
                     kmFinalText = kmFinalText,
-                    rendimientoText = rendimientoText,
-                    precioText = precioText,
                     pagoViajeText = pagoViajeText,
                     peajeUsado = peajeUsado,
                     peajeDireccion = peajeDireccion,
@@ -189,8 +183,6 @@ fun CostsScreen(
                     onPedirFecha = { mostrarDatePicker = true },
                     onKmInicialChange = onKmInicialChange,
                     onKmFinalChange = onKmFinalChange,
-                    onRendimientoChange = onRendimientoChange,
-                    onPrecioChange = onPrecioChange,
                     onPagoViajeChange = onPagoViajeChange,
                     onPeajeUsadoChange = onPeajeUsadoChange,
                     onPeajeDireccionChange = onPeajeDireccionChange,
@@ -279,8 +271,6 @@ private fun LazyListScope.viajeFormulario(
     fechaViaje: Long,
     kmInicialText: String,
     kmFinalText: String,
-    rendimientoText: String,
-    precioText: String,
     pagoViajeText: String,
     peajeUsado: Boolean,
     peajeDireccion: PeajeDireccion,
@@ -296,8 +286,6 @@ private fun LazyListScope.viajeFormulario(
     onPedirFecha: () -> Unit,
     onKmInicialChange: (String) -> Unit,
     onKmFinalChange: (String) -> Unit,
-    onRendimientoChange: (String) -> Unit,
-    onPrecioChange: (String) -> Unit,
     onPagoViajeChange: (String) -> Unit,
     onPeajeUsadoChange: (Boolean) -> Unit,
     onPeajeDireccionChange: (PeajeDireccion) -> Unit,
@@ -348,31 +336,6 @@ private fun LazyListScope.viajeFormulario(
             value = kmFinalText,
             onValueChange = onKmFinalChange,
             label = { Text("Km final (odómetro)") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-
-    item {
-        OutlinedTextField(
-            value = rendimientoText,
-            onValueChange = onRendimientoChange,
-            label = { Text("Rendimiento del auto") },
-            suffix = { Text("km/l") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-
-    item {
-        OutlinedTextField(
-            value = precioText,
-            onValueChange = onPrecioChange,
-            label = { Text("Precio de la nafta") },
-            prefix = { Text("$ ") },
-            suffix = { Text("por litro") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             modifier = Modifier.fillMaxWidth()
