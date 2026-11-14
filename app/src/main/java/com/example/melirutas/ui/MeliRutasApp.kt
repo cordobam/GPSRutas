@@ -58,7 +58,11 @@ fun MeliRutasApp() {
     val todosCerrados by mainViewModel.todosCerrados.collectAsState()
     val semanaInicio by mainViewModel.semanaInicio.collectAsState()
     val viajesSeleccionados by mainViewModel.viajesSeleccionados.collectAsState()
-    val codes by mainViewModel.codes.collectAsState()
+    val fechaCodigosSeleccionada by mainViewModel.fechaCodigosSeleccionada.collectAsState()
+    val diasDisponibles by mainViewModel.diasDisponibles.collectAsState()
+    val codigosDelDia by mainViewModel.codigosDelDia.collectAsState()
+    val puedeEditarCodigos by mainViewModel.puedeEditarCodigos.collectAsState()
+    val mensajeCodigos by mainViewModel.mensajeCodigos.collectAsState()
     val precioPeajeText by mainViewModel.precioPeajeText.collectAsState()
     val tarifaPeajeText by mainViewModel.tarifaPeajeText.collectAsState()
 
@@ -124,10 +128,16 @@ fun MeliRutasApp() {
                 )
 
                 AppTab.CODIGOS -> CodesScreen(
-                    codes = codes,
-                    onAdd = mainViewModel::addCode,
-                    onRemove = mainViewModel::removeCode,
-                    onClear = mainViewModel::clearCodes
+                    fechaSeleccionada = fechaCodigosSeleccionada,
+                    diasDisponibles = diasDisponibles,
+                    codigos = codigosDelDia,
+                    puedeEditar = puedeEditarCodigos,
+                    mensaje = mensajeCodigos,
+                    onSeleccionarDia = mainViewModel::seleccionarDia,
+                    onGenerar = mainViewModel::generarCodigos,
+                    onMarcar = mainViewModel::marcarCodigo,
+                    onBorrarDia = mainViewModel::borrarCodigosDelDia,
+                    onLimpiarMensaje = mainViewModel::limpiarMensajeCodigos
                 )
 
                 AppTab.CONFIG -> ConfigScreen(

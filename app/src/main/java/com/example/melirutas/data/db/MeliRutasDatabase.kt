@@ -7,10 +7,12 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [TripEntity::class], version = 3, exportSchema = false)
+@Database(entities = [TripEntity::class, DeliveryCodeEntity::class], version = 4, exportSchema = false)
 abstract class MeliRutasDatabase : RoomDatabase() {
 
     abstract fun tripDao(): TripDao
+
+    abstract fun deliveryCodeDao(): DeliveryCodeDao
 
     companion object {
         @Volatile
@@ -32,6 +34,23 @@ abstract class MeliRutasDatabase : RoomDatabase() {
             }
         }
 
+        /** Agrega los códigos de entrega por día sin perder los viajes ya guardados. */
+        private val MIGRACION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `delivery_codes` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`fecha` TEXT NOT NULL, " +
+                        "`codigo` INTEGER NOT NULL, " +
+                        "`entregadoEn` INTEGER)"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_delivery_codes_fecha_codigo` " +
+                        "ON `delivery_codes` (`fecha`, `codigo`)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): MeliRutasDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -39,7 +58,7 @@ abstract class MeliRutasDatabase : RoomDatabase() {
                     MeliRutasDatabase::class.java,
                     "meli_rutas.db"
                 )
-                    .addMigrations(MIGRACION_1_2, MIGRACION_2_3)
+                    .addMigrations(MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4)
                     .build()
                     .also { instance = it }
             }
