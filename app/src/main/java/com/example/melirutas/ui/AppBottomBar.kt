@@ -1,6 +1,7 @@
 package com.example.melirutas.ui
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -44,15 +45,10 @@ fun AppBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
             label = { Text("Costos") }
         )
         NavigationBarItem(
-            selected = selected == AppTab.CODIGOS,
-            onClick = { onSelect(AppTab.CODIGOS) },
-            icon = {
-                Icon(
-                    painter = painterResource(R.drawable.ic_tab_codes),
-                    contentDescription = null
-                )
-            },
-            label = { Text("Códigos") }
+            selected = selected == AppTab.RESUMEN,
+            onClick = { onSelect(AppTab.RESUMEN) },
+            icon = { Icon(Icons.Filled.Assessment, contentDescription = null) },
+            label = { Text("Resumen") }
         )
         NavigationBarItem(
             selected = selected == AppTab.CONFIG,
