@@ -3,15 +3,15 @@ package com.example.melirutas.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.melirutas.codigos.CodigosLogic
-import com.example.melirutas.codigos.ValidacionRango
+import com.example.melirutas.codigos.RutaLogic
+import com.example.melirutas.codigos.ResumenRuta
+import com.example.melirutas.codigos.ValidacionConteo
 import com.example.melirutas.cost.CostCalculator
 import com.example.melirutas.cost.PeajeDireccion
 import com.example.melirutas.cost.Semana
 import com.example.melirutas.data.AppPreferences
-import com.example.melirutas.data.DeliveryCodeRepository
+import com.example.melirutas.data.ResumenRutaRepository
 import com.example.melirutas.data.TripRepository
-import com.example.melirutas.data.db.DeliveryCodeEntity
 import com.example.melirutas.data.db.MeliRutasDatabase
 import com.example.melirutas.data.db.TripEntity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -30,13 +30,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /** Pestañas de la barra inferior. */
-enum class AppTab { LOTE, REPARTO, COSTOS, CODIGOS, CONFIG }
+enum class AppTab { LOTE, REPARTO, COSTOS, RESUMEN, CONFIG }
 
 /** Secciones de la pestaña Costos. */
 enum class CostosModo { VIAJE, CONSOLIDADO }
 
 /**
- * Estado de nivel app: pestaña activa, códigos de viaje y calculadora de costos.
+ * Estado de nivel app: pestaña activa, resumen de ruta y calculadora de costos.
  * Sobrevive a rotación de pantalla; además el viaje en curso se autoguarda en la DB.
  */
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -44,7 +44,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = AppPreferences(application)
     private val database = MeliRutasDatabase.getInstance(application)
     private val repository = TripRepository(database.tripDao())
-    private val deliveryRepository = DeliveryCodeRepository(database.deliveryCodeDao())
+    private val resumenRepository = ResumenRutaRepository(database.resumenRutaDao())
 
     private val _selectedTab = MutableStateFlow(AppTab.LOTE)
     val selectedTab: StateFlow<AppTab> = _selectedTab.asStateFlow()
@@ -93,16 +93,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _fechaViaje = MutableStateFlow(System.currentTimeMillis())
     val fechaViaje: StateFlow<Long> = _fechaViaje.asStateFlow()
 
-    private val _fechaCodigosSeleccionada =
-        MutableStateFlow(CodigosLogic.fechaDia(System.currentTimeMillis()))
-    val fechaCodigosSeleccionada: StateFlow<String> = _fechaCodigosSeleccionada.asStateFlow()
+    private val _fechaResumenSeleccionada =
+        MutableStateFlow(RutaLogic.fechaDia(System.currentTimeMillis()))
+    val fechaResumenSeleccionada: StateFlow<String> = _fechaResumenSeleccionada.asStateFlow()
 
-    val diaEditableCodigos: StateFlow<String> = _fechaViaje
-        .map { CodigosLogic.fechaDia(it) }
+    private val _diaResumenElegidoManualmente = MutableStateFlow(false)
+
+    val diaEditableResumen: StateFlow<String> = _fechaViaje
+        .map { RutaLogic.fechaDia(it) }
         .stateIn(
             viewModelScope,
             SharingStarted.Eagerly,
-            CodigosLogic.fechaDia(System.currentTimeMillis())
+            RutaLogic.fechaDia(System.currentTimeMillis())
         )
 
     private val diasConViajes: Flow<Set<String>> = combine(
@@ -110,43 +112,53 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         repository.todosLosViajes()
     ) { abierto, cerrados ->
         (listOfNotNull(abierto) + cerrados)
-            .map { CodigosLogic.fechaDia(it.fechaInicio) }
+            .map { RutaLogic.fechaDia(it.fechaInicio) }
             .toSet()
     }
 
     val diasDisponibles: StateFlow<List<String>> = combine(
         diasConViajes,
-        deliveryRepository.fechasConCodigos(),
-        _fechaCodigosSeleccionada,
-        diaEditableCodigos
-    ) { conViajes, conCodigos, seleccionada, editable ->
-        val dias = conViajes +
-            conCodigos +
-            CodigosLogic.fechaDia(System.currentTimeMillis()) +
+        resumenRepository.fechasConResumen(),
+        _fechaResumenSeleccionada,
+        diaEditableResumen
+    ) { conViajes, conResumen, seleccionada, editable ->
+        (conViajes + conResumen +
+            RutaLogic.fechaDia(System.currentTimeMillis()) +
             editable +
-            seleccionada
-        dias.sortedDescending()
+            seleccionada).sortedDescending()
     }.stateIn(
         viewModelScope,
         SharingStarted.Eagerly,
-        listOf(CodigosLogic.fechaDia(System.currentTimeMillis()))
+        listOf(RutaLogic.fechaDia(System.currentTimeMillis()))
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val codigosDelDia: StateFlow<List<DeliveryCodeEntity>> =
-        _fechaCodigosSeleccionada
-            .flatMapLatest { deliveryRepository.codigosDe(it) }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val resumenDelDia: StateFlow<ResumenRuta> = _fechaResumenSeleccionada
+        .flatMapLatest { resumenRepository.porFecha(it) }
+        .map { RutaLogic.resumen(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, RutaLogic.resumen(null))
 
-    val puedeEditarCodigos: StateFlow<Boolean> = combine(
-        _fechaCodigosSeleccionada,
-        diaEditableCodigos
+    private val _paquetesText = MutableStateFlow("")
+    val paquetesText: StateFlow<String> = _paquetesText.asStateFlow()
+
+    private val _paradasText = MutableStateFlow("")
+    val paradasText: StateFlow<String> = _paradasText.asStateFlow()
+
+    private val _puntosText = MutableStateFlow("")
+    val puntosText: StateFlow<String> = _puntosText.asStateFlow()
+
+    private val _primerPedidoEn = MutableStateFlow<Long?>(null)
+    private val _ultimoPedidoEn = MutableStateFlow<Long?>(null)
+
+    val puedeEditarResumen: StateFlow<Boolean> = combine(
+        _fechaResumenSeleccionada,
+        diaEditableResumen
     ) { seleccionada, editable ->
-        seleccionada == editable
+        seleccionada == RutaLogic.fechaDia(System.currentTimeMillis()) || seleccionada == editable
     }.stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
-    private val _mensajeCodigos = MutableStateFlow<String?>(null)
-    val mensajeCodigos: StateFlow<String?> = _mensajeCodigos.asStateFlow()
+    private val _mensajeResumen = MutableStateFlow<String?>(null)
+    val mensajeResumen: StateFlow<String?> = _mensajeResumen.asStateFlow()
 
     private val kmRecorrido = combine(_kmInicialText, _kmFinalText) { inicial, fin ->
         CostCalculator.recorrido(
@@ -233,6 +245,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val viajesSeleccionados: StateFlow<Set<Long>> = _viajesSeleccionados.asStateFlow()
 
     private var guardadoJob: Job? = null
+    private var guardadoResumenJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -250,13 +263,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
                 _fechaViaje.value = viaje.fechaInicio
-                _fechaCodigosSeleccionada.value = CodigosLogic.fechaDia(viaje.fechaInicio)
             }
         }
+        cargarResumen(_fechaResumenSeleccionada.value)
     }
 
     fun selectTab(tab: AppTab) {
         _selectedTab.value = tab
+        if (tab == AppTab.RESUMEN && !_diaResumenElegidoManualmente.value) {
+            irAHoy()
+        }
     }
 
     fun setCostosModo(modo: CostosModo) {
@@ -308,10 +324,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Cambia la fecha del viaje en curso (para cargar viajes que olvidaron anotar ese día). */
     fun onFechaChange(millis: Long) {
-        val diaAnterior = CodigosLogic.fechaDia(_fechaViaje.value)
+        val diaAnterior = RutaLogic.fechaDia(_fechaViaje.value)
+        val diaNuevo = RutaLogic.fechaDia(millis)
+        val seguirSeleccion = _fechaResumenSeleccionada.value == diaAnterior
+
         _fechaViaje.value = millis
-        if (_fechaCodigosSeleccionada.value == diaAnterior) {
-            _fechaCodigosSeleccionada.value = CodigosLogic.fechaDia(millis)
+        if (seguirSeleccion) {
+            _fechaResumenSeleccionada.value = diaNuevo
+            _diaResumenElegidoManualmente.value =
+                diaNuevo != RutaLogic.fechaDia(System.currentTimeMillis())
+            cargarResumen(diaNuevo)
         }
         programarGuardado()
     }
@@ -372,7 +394,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _peajeUsado.value = false
             _peajeDireccion.value = PeajeDireccion.IDA_VUELTA
             _fechaViaje.value = System.currentTimeMillis()
-            _fechaCodigosSeleccionada.value = CodigosLogic.fechaDia(_fechaViaje.value)
+            _diaResumenElegidoManualmente.value = false
+            _fechaResumenSeleccionada.value = RutaLogic.fechaDia(_fechaViaje.value)
+            _mensajeResumen.value = null
+            cargarResumen(_fechaResumenSeleccionada.value)
         }
     }
 
@@ -382,64 +407,111 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun seleccionarDia(fecha: String) {
-        _fechaCodigosSeleccionada.value = fecha
+        _fechaResumenSeleccionada.value = fecha
+        _diaResumenElegidoManualmente.value =
+            fecha != RutaLogic.fechaDia(System.currentTimeMillis())
+        cargarResumen(fecha)
     }
 
-    fun generarCodigos(desdeTexto: String, hastaTexto: String): String? {
-        if (!puedeEditarCodigos.value) return "Ese día es de solo lectura."
+    fun irAHoy() {
+        seleccionarDia(RutaLogic.fechaDia(System.currentTimeMillis()))
+    }
 
-        return when (val validacion = CodigosLogic.validarRango(desdeTexto, hastaTexto)) {
-            is ValidacionRango.Error -> validacion.mensaje
-            is ValidacionRango.Ok -> {
-                val fecha = _fechaCodigosSeleccionada.value
-                viewModelScope.launch {
-                    val agregados = deliveryRepository.generarRango(
-                        fecha = fecha,
-                        desde = validacion.desde,
-                        hasta = validacion.hasta
-                    )
-                    _mensajeCodigos.value = mensajeCodigosAgregados(agregados)
-                }
-                null
-            }
+    fun onPaquetesChange(value: String) {
+        _paquetesText.value = value
+        programarGuardadoResumen()
+    }
+
+    fun onParadasChange(value: String) {
+        _paradasText.value = value
+        programarGuardadoResumen()
+    }
+
+    fun onPuntosChange(value: String) {
+        _puntosText.value = value
+        programarGuardadoResumen()
+    }
+
+    fun marcarPrimerPedido() {
+        if (!puedeEditarResumen.value) return mensajeSoloLectura()
+
+        val ahora = System.currentTimeMillis()
+        _primerPedidoEn.value = ahora
+        if ((_ultimoPedidoEn.value ?: 0L) < ahora) {
+            _ultimoPedidoEn.value = null
         }
+        programarGuardadoResumen(0L)
     }
 
-    fun marcarCodigo(codigo: Int, entregado: Boolean) {
-        if (!puedeEditarCodigos.value) {
-            _mensajeCodigos.value = "Ese día es de solo lectura."
+    fun marcarUltimoPedido() {
+        if (!puedeEditarResumen.value) return mensajeSoloLectura()
+
+        val primero = _primerPedidoEn.value
+        if (primero == null) {
+            _mensajeResumen.value = "Marcá primero el primer pedido."
             return
         }
 
-        val fecha = _fechaCodigosSeleccionada.value
-        val cuando = if (entregado) System.currentTimeMillis() else null
+        _ultimoPedidoEn.value = System.currentTimeMillis().coerceAtLeast(primero)
+        programarGuardadoResumen(0L)
+    }
+
+    fun limpiarHorarios() {
+        if (!puedeEditarResumen.value) return mensajeSoloLectura()
+
+        _primerPedidoEn.value = null
+        _ultimoPedidoEn.value = null
+        programarGuardadoResumen(0L)
+    }
+
+    fun limpiarMensajeResumen() {
+        _mensajeResumen.value = null
+    }
+
+    private fun cargarResumen(fecha: String) {
+        guardadoResumenJob?.cancel()
         viewModelScope.launch {
-            deliveryRepository.marcar(fecha, codigo, cuando)
+            val guardado = resumenRepository.porFecha(fecha).first()
+            _paquetesText.value = guardado?.paquetes?.toString() ?: ""
+            _paradasText.value = guardado?.paradas?.toString() ?: ""
+            _puntosText.value = guardado?.puntos?.toString() ?: ""
+            _primerPedidoEn.value = guardado?.primerPedidoEn
+            _ultimoPedidoEn.value = guardado?.ultimoPedidoEn
         }
     }
 
-    fun borrarCodigosDelDia() {
-        if (!puedeEditarCodigos.value) {
-            _mensajeCodigos.value = "Ese día es de solo lectura."
-            return
+    private fun programarGuardadoResumen(retardo: Long = 400L) {
+        if (!puedeEditarResumen.value) return mensajeSoloLectura()
+
+        when (val validacion = RutaLogic.validarConteo(
+            paquetesTexto = _paquetesText.value,
+            paradasTexto = _paradasText.value,
+            puntosTexto = _puntosText.value
+        )) {
+            is ValidacionConteo.Error -> _mensajeResumen.value = validacion.mensaje
+            is ValidacionConteo.Ok -> Unit
         }
 
-        val fecha = _fechaCodigosSeleccionada.value
-        viewModelScope.launch {
-            deliveryRepository.borrarDia(fecha)
-            _mensajeCodigos.value = "Códigos del día borrados."
+        guardadoResumenJob?.cancel()
+        guardadoResumenJob = viewModelScope.launch {
+            delay(retardo)
+            resumenRepository.guardar(
+                fecha = _fechaResumenSeleccionada.value,
+                paquetes = numeroOpcional(_paquetesText.value),
+                paradas = numeroOpcional(_paradasText.value),
+                puntos = numeroOpcional(_puntosText.value),
+                primerPedidoEn = _primerPedidoEn.value,
+                ultimoPedidoEn = _ultimoPedidoEn.value
+            )
         }
     }
 
-    fun limpiarMensajeCodigos() {
-        _mensajeCodigos.value = null
+    private fun mensajeSoloLectura() {
+        _mensajeResumen.value = "Ese día es de solo lectura."
     }
 
-    private fun mensajeCodigosAgregados(cantidad: Int): String = when (cantidad) {
-        0 -> "Los códigos de ese rango ya estaban cargados."
-        1 -> "Se agregó 1 código."
-        else -> "Se agregaron $cantidad códigos."
-    }
+    private fun numeroOpcional(texto: String): Int? =
+        texto.trim().toIntOrNull()?.takeIf { it >= 0 }
 
     /** Graba el viaje abierto un ratito después de la última tecla, para no escribir de más. */
     private fun programarGuardado() {

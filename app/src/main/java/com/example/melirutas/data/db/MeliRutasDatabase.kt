@@ -7,12 +7,16 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [TripEntity::class, DeliveryCodeEntity::class], version = 4, exportSchema = false)
+@Database(
+    entities = [TripEntity::class, DeliveryCodeEntity::class, ResumenRutaEntity::class],
+    version = 5,
+    exportSchema = false
+)
 abstract class MeliRutasDatabase : RoomDatabase() {
 
     abstract fun tripDao(): TripDao
 
-    abstract fun deliveryCodeDao(): DeliveryCodeDao
+    abstract fun resumenRutaDao(): ResumenRutaDao
 
     companion object {
         @Volatile
@@ -51,6 +55,22 @@ abstract class MeliRutasDatabase : RoomDatabase() {
             }
         }
 
+        /** Agrega el resumen de ruta por día sin tocar los datos existentes. */
+        internal val MIGRACION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `resumen_ruta` (" +
+                        "`fecha` TEXT NOT NULL, " +
+                        "`paquetes` INTEGER, " +
+                        "`paradas` INTEGER, " +
+                        "`puntos` INTEGER, " +
+                        "`primerPedidoEn` INTEGER, " +
+                        "`ultimoPedidoEn` INTEGER, " +
+                        "PRIMARY KEY(`fecha`))"
+                )
+            }
+        }
+
         fun getInstance(context: Context): MeliRutasDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -58,7 +78,7 @@ abstract class MeliRutasDatabase : RoomDatabase() {
                     MeliRutasDatabase::class.java,
                     "meli_rutas.db"
                 )
-                    .addMigrations(MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4)
+                    .addMigrations(MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4, MIGRACION_4_5)
                     .build()
                     .also { instance = it }
             }

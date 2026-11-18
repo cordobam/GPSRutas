@@ -58,11 +58,14 @@ fun MeliRutasApp() {
     val todosCerrados by mainViewModel.todosCerrados.collectAsState()
     val semanaInicio by mainViewModel.semanaInicio.collectAsState()
     val viajesSeleccionados by mainViewModel.viajesSeleccionados.collectAsState()
-    val fechaCodigosSeleccionada by mainViewModel.fechaCodigosSeleccionada.collectAsState()
+    val fechaResumenSeleccionada by mainViewModel.fechaResumenSeleccionada.collectAsState()
     val diasDisponibles by mainViewModel.diasDisponibles.collectAsState()
-    val codigosDelDia by mainViewModel.codigosDelDia.collectAsState()
-    val puedeEditarCodigos by mainViewModel.puedeEditarCodigos.collectAsState()
-    val mensajeCodigos by mainViewModel.mensajeCodigos.collectAsState()
+    val resumenDelDia by mainViewModel.resumenDelDia.collectAsState()
+    val paquetesText by mainViewModel.paquetesText.collectAsState()
+    val paradasText by mainViewModel.paradasText.collectAsState()
+    val puntosText by mainViewModel.puntosText.collectAsState()
+    val puedeEditarResumen by mainViewModel.puedeEditarResumen.collectAsState()
+    val mensajeResumen by mainViewModel.mensajeResumen.collectAsState()
     val precioPeajeText by mainViewModel.precioPeajeText.collectAsState()
     val tarifaPeajeText by mainViewModel.tarifaPeajeText.collectAsState()
 
@@ -127,17 +130,24 @@ fun MeliRutasApp() {
                     onMarcarPagados = mainViewModel::marcarSeleccionadosPagados
                 )
 
-                AppTab.CODIGOS -> CodesScreen(
-                    fechaSeleccionada = fechaCodigosSeleccionada,
+                AppTab.RESUMEN -> CodesScreen(
+                    fechaSeleccionada = fechaResumenSeleccionada,
                     diasDisponibles = diasDisponibles,
-                    codigos = codigosDelDia,
-                    puedeEditar = puedeEditarCodigos,
-                    mensaje = mensajeCodigos,
+                    resumen = resumenDelDia,
+                    paquetesText = paquetesText,
+                    paradasText = paradasText,
+                    puntosText = puntosText,
+                    puedeEditar = puedeEditarResumen,
+                    mensaje = mensajeResumen,
                     onSeleccionarDia = mainViewModel::seleccionarDia,
-                    onGenerar = mainViewModel::generarCodigos,
-                    onMarcar = mainViewModel::marcarCodigo,
-                    onBorrarDia = mainViewModel::borrarCodigosDelDia,
-                    onLimpiarMensaje = mainViewModel::limpiarMensajeCodigos
+                    onIrAHoy = mainViewModel::irAHoy,
+                    onPaquetesChange = mainViewModel::onPaquetesChange,
+                    onParadasChange = mainViewModel::onParadasChange,
+                    onPuntosChange = mainViewModel::onPuntosChange,
+                    onMarcarPrimero = mainViewModel::marcarPrimerPedido,
+                    onMarcarUltimo = mainViewModel::marcarUltimoPedido,
+                    onLimpiarHorarios = mainViewModel::limpiarHorarios,
+                    onLimpiarMensaje = mainViewModel::limpiarMensajeResumen
                 )
 
                 AppTab.CONFIG -> ConfigScreen(
