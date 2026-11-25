@@ -20,14 +20,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,7 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onPickPhotos: (List<Uri>) -> Unit,
@@ -101,70 +96,57 @@ fun HomeScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Meli Rutas") },
-                colors = TopAppBarDefaults.mediumTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp, vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        AppLogo(size = 104.dp)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "Meli Rutas",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = "Convertí fotos de envíos en rutas para Google Maps",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Spacer(Modifier.height(16.dp))
+        FilledTonalButton(
+            onClick = { openCamera() },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Filled.CameraAlt, contentDescription = null)
+            Spacer(Modifier.size(8.dp))
+            Text("Sacar fotos (cámara)", style = MaterialTheme.typography.bodyLarge)
+        }
+        FilledTonalButton(
+            onClick = { openGallery() },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Filled.PhotoLibrary, contentDescription = null)
+            Spacer(Modifier.size(8.dp))
+            Text("Elegir fotos de la galería", style = MaterialTheme.typography.bodyLarge)
+        }
+        if (pickerError) {
+            Text(
+                text = "No se pudo abrir la galería. Probá abrir la app Archivos o Fotos y volvé a intentar.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error
             )
         }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 24.dp, vertical = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            AppLogo(size = 104.dp)
+        if (permissionDenied) {
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Meli Rutas",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
+                text = "Sin permiso de cámara. Podés usar la galería o habilitar el permiso en Ajustes de la app.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error
             )
-            Text(
-                text = "Convertí fotos de envíos en rutas para Google Maps",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Spacer(Modifier.height(16.dp))
-            FilledTonalButton(
-                onClick = { openCamera() },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Filled.CameraAlt, contentDescription = null)
-                Spacer(Modifier.size(8.dp))
-                Text("Sacar fotos (cámara)", style = MaterialTheme.typography.bodyLarge)
-            }
-            FilledTonalButton(
-                onClick = { openGallery() },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Filled.PhotoLibrary, contentDescription = null)
-                Spacer(Modifier.size(8.dp))
-                Text("Elegir fotos de la galería", style = MaterialTheme.typography.bodyLarge)
-            }
-            if (pickerError) {
-                Text(
-                    text = "No se pudo abrir la galería. Probá abrir la app Archivos o Fotos y volvé a intentar.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-            if (permissionDenied) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "Sin permiso de cámara. Podés usar la galería o habilitar el permiso en Ajustes de la app.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
         }
     }
 }

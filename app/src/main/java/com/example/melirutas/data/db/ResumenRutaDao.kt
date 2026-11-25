@@ -14,6 +14,9 @@ interface ResumenRutaDao {
     @Query("SELECT DISTINCT fecha FROM resumen_ruta ORDER BY fecha DESC")
     fun fechasConResumen(): Flow<List<String>>
 
+    @Query("SELECT * FROM resumen_ruta ORDER BY fecha DESC")
+    fun todosLosResumenes(): Flow<List<ResumenRutaEntity>>
+
     @Upsert
     suspend fun guardar(resumen: ResumenRutaEntity)
 }

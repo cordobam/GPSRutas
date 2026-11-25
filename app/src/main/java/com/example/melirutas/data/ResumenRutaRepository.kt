@@ -10,6 +10,8 @@ class ResumenRutaRepository(private val dao: ResumenRutaDao) {
 
     fun fechasConResumen(): Flow<List<String>> = dao.fechasConResumen()
 
+    fun todosLosResumenes(): Flow<List<ResumenRutaEntity>> = dao.todosLosResumenes()
+
     suspend fun guardar(
         fecha: String,
         paquetes: Int?,
