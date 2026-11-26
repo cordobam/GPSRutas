@@ -3,7 +3,6 @@ package com.example.melirutas.ui
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -49,12 +48,6 @@ fun AppBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
             onClick = { onSelect(AppTab.RESUMEN) },
             icon = { Icon(Icons.Filled.Assessment, contentDescription = null) },
             label = { Text("Resumen") }
-        )
-        NavigationBarItem(
-            selected = selected == AppTab.CONFIG,
-            onClick = { onSelect(AppTab.CONFIG) },
-            icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
-            label = { Text("Config") }
         )
     }
 }

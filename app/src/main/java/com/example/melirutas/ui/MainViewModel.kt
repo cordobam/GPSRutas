@@ -13,6 +13,7 @@ import com.example.melirutas.data.AppPreferences
 import com.example.melirutas.data.ResumenRutaRepository
 import com.example.melirutas.data.TripRepository
 import com.example.melirutas.data.db.MeliRutasDatabase
+import com.example.melirutas.data.db.ResumenRutaEntity
 import com.example.melirutas.data.db.TripEntity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -30,10 +31,44 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /** Pestañas de la barra inferior. */
-enum class AppTab { LOTE, REPARTO, COSTOS, RESUMEN, CONFIG }
+enum class AppTab { LOTE, REPARTO, COSTOS, RESUMEN, CONFIG, PERFIL }
 
 /** Secciones de la pestaña Costos. */
 enum class CostosModo { VIAJE, CONSOLIDADO }
+
+/** Métricas acumuladas que se muestran en la pantalla de perfil. */
+data class PerfilEstadisticas(
+    val viajes: String,
+    val kmTotales: String,
+    val kmPromedio: String,
+    val cobrado: String,
+    val nafta: String,
+    val peaje: String,
+    val neto: String,
+    val netoPromedio: String,
+    val mejorViaje: String,
+    val pagados: String,
+    val paquetes: String,
+    val paradas: String,
+    val puntos: String,
+    val diasConResumen: String,
+    val duracionPromedio: String,
+    val paquetesPorHora: String
+)
+
+private fun kmDe(viaje: TripEntity): Double? =
+    CostCalculator.recorrido(viaje.kmInicial, viaje.kmFinal)
+
+private fun naftaDe(viaje: TripEntity): Double? =
+    CostCalculator.costo(
+        CostCalculator.litros(kmDe(viaje), viaje.rendimiento),
+        viaje.precioPorLitro
+    )
+
+private fun peajeDe(viaje: TripEntity): Double? = viaje.peajeMonto
+
+private fun netoDe(viaje: TripEntity): Double? =
+    CostCalculator.neto(viaje.pagoViaje, naftaDe(viaje), peajeDe(viaje))
 
 /**
  * Estado de nivel app: pestaña activa, resumen de ruta y calculadora de costos.
@@ -231,6 +266,58 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Todos los viajes cerrados: los que se agrupan por semana en el consolidado. */
     val todosCerrados: StateFlow<List<TripEntity>> = repository.todosLosViajes()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    private val todosLosResumenes: StateFlow<List<ResumenRutaEntity>> =
+        resumenRepository.todosLosResumenes()
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Estadísticas globales que se muestran en la pantalla de perfil. */
+    val perfilEstadisticas: StateFlow<PerfilEstadisticas> = combine(
+        todosCerrados,
+        todosLosResumenes
+    ) { viajes, resumenes ->
+        val conPago = viajes.filter { it.pagoViaje != null && naftaDe(it) != null }
+        val totalKm = viajes.sumOf { kmDe(it) ?: 0.0 }
+        val totalNafta = viajes.sumOf { naftaDe(it) ?: 0.0 }
+        val totalPeaje = viajes.sumOf { peajeDe(it) ?: 0.0 }
+        val totalCobrado = conPago.sumOf { it.pagoViaje ?: 0.0 }
+        val totalNaftaConPago = conPago.sumOf { naftaDe(it) ?: 0.0 }
+        val totalPeajeConPago = conPago.sumOf { peajeDe(it) ?: 0.0 }
+        val totalNeto = totalCobrado - totalNaftaConPago - totalPeajeConPago
+        val mejor = conPago
+            .mapNotNull { viaje -> netoDe(viaje)?.let { viaje to it } }
+            .maxByOrNull { it.second }
+        val pagados = viajes.count { it.pagadoEn != null }
+        val resumenesDelDia = resumenes.map { RutaLogic.resumen(it) }
+        val duraciones = resumenesDelDia.mapNotNull { it.duracionMillis }
+        val porHora = resumenesDelDia.mapNotNull { it.paquetesPorHora }
+
+        PerfilEstadisticas(
+            viajes = viajes.size.toString(),
+            kmTotales = "${CostCalculator.formatNumber(totalKm, 1)} km",
+            kmPromedio = if (viajes.isEmpty()) SIN_DATO
+            else "${CostCalculator.formatNumber(totalKm / viajes.size, 1)} km",
+            cobrado = CostCalculator.formatCurrency(totalCobrado),
+            nafta = CostCalculator.formatCurrency(totalNafta),
+            peaje = CostCalculator.formatCurrency(totalPeaje),
+            neto = CostCalculator.formatCurrency(totalNeto),
+            netoPromedio = if (conPago.isEmpty()) SIN_DATO
+            else CostCalculator.formatCurrency(totalNeto / conPago.size),
+            mejorViaje = mejor?.let { (viaje, monto) ->
+                val fecha = RutaLogic.formatearDia(RutaLogic.fechaDia(viaje.fechaInicio))
+                "$fecha · ${CostCalculator.formatCurrency(monto)}"
+            } ?: SIN_DATO,
+            pagados = "$pagados pagados · ${viajes.size - pagados} pendientes",
+            paquetes = resumenes.sumOf { it.paquetes ?: 0 }.toString(),
+            paradas = resumenes.sumOf { it.paradas ?: 0 }.toString(),
+            puntos = resumenes.sumOf { it.puntos ?: 0 }.toString(),
+            diasConResumen = resumenes.size.toString(),
+            duracionPromedio = if (duraciones.isEmpty()) SIN_DATO
+            else RutaLogic.formatearDuracion(duraciones.sum() / duraciones.size),
+            paquetesPorHora = if (porHora.isEmpty()) SIN_DATO
+            else "${CostCalculator.formatNumber(porHora.sum() / porHora.size, 1)} paq/h"
+        )
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, perfilVacio())
 
     /** Sección visible de Costos: el formulario del viaje o el consolidado semanal. */
     private val _costosModo = MutableStateFlow(CostosModo.VIAJE)
@@ -546,5 +633,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private companion object {
         const val SIN_DATO = "—"
+
+        fun perfilVacio() = PerfilEstadisticas(
+            viajes = "0",
+            kmTotales = "0 km",
+            kmPromedio = SIN_DATO,
+            cobrado = CostCalculator.formatCurrency(0.0),
+            nafta = CostCalculator.formatCurrency(0.0),
+            peaje = CostCalculator.formatCurrency(0.0),
+            neto = CostCalculator.formatCurrency(0.0),
+            netoPromedio = SIN_DATO,
+            mejorViaje = SIN_DATO,
+            pagados = "0 pagados · 0 pendientes",
+            paquetes = "0",
+            paradas = "0",
+            puntos = "0",
+            diasConResumen = "0",
+            duracionPromedio = SIN_DATO,
+            paquetesPorHora = SIN_DATO
+        )
     }
 }
