@@ -10,11 +10,14 @@ import com.example.melirutas.cost.CostCalculator
 import com.example.melirutas.cost.PeajeDireccion
 import com.example.melirutas.cost.Semana
 import com.example.melirutas.data.AppPreferences
+import com.example.melirutas.data.RepartoPreferences
 import com.example.melirutas.data.ResumenRutaRepository
 import com.example.melirutas.data.TripRepository
+import com.example.melirutas.data.ZonasAppPreferences
 import com.example.melirutas.data.db.MeliRutasDatabase
 import com.example.melirutas.data.db.ResumenRutaEntity
 import com.example.melirutas.data.db.TripEntity
+import com.example.melirutas.reparto.ZonaApp
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -77,6 +80,8 @@ private fun netoDe(viaje: TripEntity): Double? =
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val prefs = AppPreferences(application)
+    private val zonasAppPrefs = ZonasAppPreferences(application)
+    private val repartoPrefs = RepartoPreferences(application)
     private val database = MeliRutasDatabase.getInstance(application)
     private val repository = TripRepository(database.tripDao())
     private val resumenRepository = ResumenRutaRepository(database.resumenRutaDao())
@@ -123,6 +128,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _precioPeajeText = MutableStateFlow(plainNumber(prefs.tollPrice.value))
     val precioPeajeText: StateFlow<String> = _precioPeajeText.asStateFlow()
+
+    private val _nuevaZonaAppText = MutableStateFlow("")
+    val nuevaZonaAppText: StateFlow<String> = _nuevaZonaAppText.asStateFlow()
+
+    val zonasApp: StateFlow<List<ZonaApp>> = zonasAppPrefs.zonasApp
 
     /** Fecha elegida para el viaje en curso (la usa el date picker de Costos). */
     private val _fechaViaje = MutableStateFlow(System.currentTimeMillis())
@@ -407,6 +417,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _precioPeajeText.value = value
         CostCalculator.parseDecimal(value)?.let { prefs.setTollPrice(it) }
         programarGuardado()
+    }
+
+    fun onNuevaZonaAppChange(value: String) {
+        _nuevaZonaAppText.value = value
+    }
+
+    fun agregarZonaApp(): String? {
+        val error = zonasAppPrefs.agregar(_nuevaZonaAppText.value)
+        if (error == null) _nuevaZonaAppText.value = ""
+        return error
+    }
+
+    fun editarZonaApp(id: String, nombre: String): String? =
+        zonasAppPrefs.editar(id, nombre)
+
+    fun eliminarZonaApp(id: String): String? {
+        if (id in repartoPrefs.zonasAppEnUso()) {
+            return "No se puede borrar: está asignada a una zona del auto."
+        }
+        zonasAppPrefs.eliminar(id)
+        return null
     }
 
     /** Cambia la fecha del viaje en curso (para cargar viajes que olvidaron anotar ese día). */

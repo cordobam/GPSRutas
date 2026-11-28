@@ -11,9 +11,18 @@ class RepartoLogicTest {
     private fun zona(
         id: String,
         nombre: String,
+        zonaAppId: String? = null,
         rangos: List<ReglaRango> = emptyList(),
         trackIds: List<Long> = emptyList()
-    ) = ZonaReparto(id = id, nombre = nombre, rangos = rangos, trackIds = trackIds)
+    ) = ZonaReparto(
+        id = id,
+        nombre = nombre,
+        zonaAppId = zonaAppId,
+        rangos = rangos,
+        trackIds = trackIds
+    )
+
+    private fun zonaApp(id: String, nombre: String) = ZonaApp(id = id, nombre = nombre)
 
     @Test
     fun resolver_trackPuntualGanaSobreRangoDeOtraZona() {
@@ -169,6 +178,33 @@ class RepartoLogicTest {
     }
 
     @Test
+    fun validarNombreZonaApp_vacio_error() {
+        assertNotNull(RepartoLogic.validarNombreZonaApp("   ", emptyList()))
+    }
+
+    @Test
+    fun validarNombreZonaApp_duplicadoIgnoraMayusculas_error() {
+        val zonasApp = listOf(zonaApp("z1", "Norte"))
+
+        assertNotNull(RepartoLogic.validarNombreZonaApp("norte", zonasApp))
+    }
+
+    @Test
+    fun validarNombreZonaApp_mismoIdPermitido() {
+        val zonasApp = listOf(zonaApp("z1", "Norte"))
+
+        assertNull(RepartoLogic.validarNombreZonaApp("Norte", zonasApp, idEditando = "z1"))
+    }
+
+    @Test
+    fun validarNombreZonaApp_tope5Alta_errorPeroEdicionPermitida() {
+        val zonasApp = (1..RepartoLogic.MAX_ZONAS_APP).map { zonaApp("z$it", "Zona $it") }
+
+        assertNotNull(RepartoLogic.validarNombreZonaApp("Zona 6", zonasApp))
+        assertNull(RepartoLogic.validarNombreZonaApp("Zona 1", zonasApp, idEditando = "z1"))
+    }
+
+    @Test
     fun nuevoDiaDesde_copiaZonasSinReglas() {
         val anterior = RepartoDia(
             fecha = "2026-10-29",
@@ -176,6 +212,7 @@ class RepartoLogicTest {
                 zona(
                     "a",
                     "Atrás derecha",
+                    zonaAppId = "zona-app-1",
                     rangos = listOf(ReglaRango(1, 10)),
                     trackIds = listOf(5)
                 )
@@ -188,6 +225,7 @@ class RepartoLogicTest {
         assertEquals(1, nuevo.zonas.size)
         assertEquals("a", nuevo.zonas[0].id)
         assertEquals("Atrás derecha", nuevo.zonas[0].nombre)
+        assertEquals("zona-app-1", nuevo.zonas[0].zonaAppId)
         assertTrue(nuevo.zonas[0].rangos.isEmpty())
         assertTrue(nuevo.zonas[0].trackIds.isEmpty())
     }

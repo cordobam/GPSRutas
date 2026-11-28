@@ -88,6 +88,8 @@ fun MeliRutasApp() {
     val mensajeResumen by mainViewModel.mensajeResumen.collectAsState()
     val precioPeajeText by mainViewModel.precioPeajeText.collectAsState()
     val tarifaPeajeText by mainViewModel.tarifaPeajeText.collectAsState()
+    val nuevaZonaAppText by mainViewModel.nuevaZonaAppText.collectAsState()
+    val zonasApp by mainViewModel.zonasApp.collectAsState()
     val perfilEstadisticas by mainViewModel.perfilEstadisticas.collectAsState()
 
     val hideBar = tab == AppTab.LOTE &&
@@ -142,7 +144,10 @@ fun MeliRutasApp() {
                         viewModel = batchViewModel
                     )
 
-                    AppTab.REPARTO -> RepartoScreen(viewModel = repartoViewModel)
+                    AppTab.REPARTO -> RepartoScreen(
+                        viewModel = repartoViewModel,
+                        zonasApp = zonasApp
+                    )
 
                     AppTab.COSTOS -> CostsScreen(
                         modo = costosModo,
@@ -207,9 +212,15 @@ fun MeliRutasApp() {
                         rendimientoActualText = rendimientoActualText,
                         precioPeajeText = precioPeajeText,
                         tarifaPeajeText = tarifaPeajeText,
+                        zonasApp = zonasApp,
+                        nuevaZonaAppText = nuevaZonaAppText,
                         onPrecioNaftaChange = mainViewModel::onPrecioChange,
                         onRendimientoChange = mainViewModel::onRendimientoChange,
-                        onPrecioPeajeChange = mainViewModel::onPrecioPeajeChange
+                        onPrecioPeajeChange = mainViewModel::onPrecioPeajeChange,
+                        onNuevaZonaAppChange = mainViewModel::onNuevaZonaAppChange,
+                        onAgregarZonaApp = mainViewModel::agregarZonaApp,
+                        onEditarZonaApp = mainViewModel::editarZonaApp,
+                        onEliminarZonaApp = mainViewModel::eliminarZonaApp
                     )
 
                     AppTab.PERFIL -> ProfileScreen(stats = perfilEstadisticas)

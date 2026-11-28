@@ -37,7 +37,7 @@ class RepartoViewModel(application: Application) : AndroidViewModel(application)
         return null
     }
 
-    fun editarZona(id: String, nombre: String): String? {
+    fun editarZona(id: String, nombre: String, zonaAppId: String?): String? {
         val actual = repartoActual()
         if (actual.zonas.none { it.id == id }) return "La zona no existe."
 
@@ -47,7 +47,11 @@ class RepartoViewModel(application: Application) : AndroidViewModel(application)
         prefs.guardar(
             actual.copy(
                 zonas = actual.zonas.map {
-                    if (it.id == id) it.copy(nombre = nombre.trim()) else it
+                    if (it.id == id) {
+                        it.copy(nombre = nombre.trim(), zonaAppId = zonaAppId)
+                    } else {
+                        it
+                    }
                 }
             )
         )

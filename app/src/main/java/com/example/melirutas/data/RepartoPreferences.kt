@@ -53,6 +53,19 @@ class RepartoPreferences(context: Context) {
             .filter { it < fecha }
             .maxOrNull()
 
+    fun zonasAppEnUso(): Set<String> =
+        prefs.all.keys
+            .asSequence()
+            .filter { it.startsWith(KEY_PREFIX) }
+            .mapNotNull { key ->
+                prefs.getString(key, null)?.let { raw ->
+                    deserializar(key.removePrefix(KEY_PREFIX), raw)
+                }
+            }
+            .flatMap { it.zonas }
+            .mapNotNull { it.zonaAppId }
+            .toSet()
+
     private fun clave(fecha: String): String = KEY_PREFIX + fecha
 
     private fun serializar(reparto: RepartoDia): String {
@@ -73,6 +86,7 @@ class RepartoPreferences(context: Context) {
                 JSONObject()
                     .put("id", zona.id)
                     .put("nombre", zona.nombre)
+                    .put("zonaAppId", zona.zonaAppId.orEmpty())
                     .put("rangos", rangosJson)
                     .put("trackIds", trackIdsJson)
             )
@@ -99,6 +113,7 @@ class RepartoPreferences(context: Context) {
             ZonaReparto(
                 id = zonaJson.getString("id"),
                 nombre = zonaJson.getString("nombre"),
+                zonaAppId = zonaJson.optString("zonaAppId").takeIf { it.isNotEmpty() },
                 rangos = rangos,
                 trackIds = trackIds
             )
