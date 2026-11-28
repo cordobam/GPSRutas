@@ -13,6 +13,8 @@ sealed class ValidacionTrack {
 
 object RepartoLogic {
 
+    const val MAX_ZONAS_APP = 5
+
     fun resolver(trackId: Long, zonas: List<ZonaReparto>): ResolucionTrack {
         val porExcepcion = zonas.firstOrNull { trackId in it.trackIds }
         if (porExcepcion != null) {
@@ -38,6 +40,22 @@ object RepartoLogic {
             it.id != idEditando && it.nombre.equals(limpio, ignoreCase = true)
         }
         return if (repetida) "Ya existe una zona con ese nombre." else null
+    }
+
+    fun validarNombreZonaApp(
+        nombre: String,
+        zonasApp: List<ZonaApp>,
+        idEditando: String? = null
+    ): String? {
+        val limpio = nombre.trim()
+        if (limpio.isEmpty()) return "Escribí un nombre para la zona de la app."
+        if (idEditando == null && zonasApp.size >= MAX_ZONAS_APP) {
+            return "Máximo $MAX_ZONAS_APP zonas de la app."
+        }
+        val repetida = zonasApp.any {
+            it.id != idEditando && it.nombre.equals(limpio, ignoreCase = true)
+        }
+        return if (repetida) "Ya existe una zona de la app con ese nombre." else null
     }
 
     fun validarRango(
@@ -83,7 +101,9 @@ object RepartoLogic {
 
     fun nuevoDiaDesde(fecha: String, anterior: RepartoDia?): RepartoDia {
         if (anterior == null) return RepartoDia(fecha = fecha)
-        val zonas = anterior.zonas.map { ZonaReparto(id = it.id, nombre = it.nombre) }
+        val zonas = anterior.zonas.map {
+            ZonaReparto(id = it.id, nombre = it.nombre, zonaAppId = it.zonaAppId)
+        }
         return RepartoDia(fecha = fecha, zonas = zonas)
     }
 

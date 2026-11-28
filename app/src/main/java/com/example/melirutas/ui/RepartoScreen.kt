@@ -26,11 +26,15 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -55,13 +59,17 @@ import com.example.melirutas.reparto.ReglaRango
 import com.example.melirutas.reparto.RepartoLogic
 import com.example.melirutas.reparto.ResolucionTrack
 import com.example.melirutas.reparto.ValidacionTrack
+import com.example.melirutas.reparto.ZonaApp
 import com.example.melirutas.reparto.ZonaReparto
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RepartoScreen(viewModel: RepartoViewModel) {
+fun RepartoScreen(
+    viewModel: RepartoViewModel,
+    zonasApp: List<ZonaApp>
+) {
     val reparto by viewModel.reparto.collectAsState()
     val zonas = reparto?.zonas.orEmpty()
 
@@ -145,6 +153,7 @@ fun RepartoScreen(viewModel: RepartoViewModel) {
                 items(zonas, key = { it.id }) { zona ->
                     ZonaCard(
                         zona = zona,
+                        zonasApp = zonasApp,
                         onEditar = { dialogoZona = DialogoZona.Editar(zona) },
                         onEliminar = { zonaEliminar = zona },
                         onAgregarRango = { zonaRango = zona },
@@ -162,10 +171,12 @@ fun RepartoScreen(viewModel: RepartoViewModel) {
     dialogoZona?.let { dialogo ->
         ZonaDialog(
             dialogo = dialogo,
-            onGuardar = { nombre ->
+            zonasApp = zonasApp,
+            onGuardar = { nombre, zonaAppId ->
                 when (dialogo) {
                     is DialogoZona.Nueva -> viewModel.agregarZona(nombre)
-                    is DialogoZona.Editar -> viewModel.editarZona(dialogo.zona.id, nombre)
+                    is DialogoZona.Editar ->
+                        viewModel.editarZona(dialogo.zona.id, nombre, zonaAppId)
                 }
             },
             onDismiss = { dialogoZona = null },
@@ -324,6 +335,7 @@ private fun BuscadorCard(
 @Composable
 private fun ZonaCard(
     zona: ZonaReparto,
+    zonasApp: List<ZonaApp>,
     onEditar: () -> Unit,
     onEliminar: () -> Unit,
     onAgregarRango: () -> Unit,
@@ -360,6 +372,16 @@ private fun ZonaCard(
                     )
                 }
             }
+
+            val nombreZonaApp = zona.zonaAppId?.let { id ->
+                zonasApp.firstOrNull { it.id == id }?.nombre
+            } ?: "Sin asignar"
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Zona app: $nombreZonaApp",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             if (zona.rangos.isEmpty() && zona.trackIds.isEmpty()) {
                 Text(
@@ -447,17 +469,24 @@ private fun ZonaCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ZonaDialog(
     dialogo: DialogoZona,
-    onGuardar: (String) -> String?,
+    zonasApp: List<ZonaApp>,
+    onGuardar: (String, String?) -> String?,
     onDismiss: () -> Unit,
     onExito: (String) -> Unit
 ) {
     val esEdicion = dialogo is DialogoZona.Editar
     val nombreInicial = (dialogo as? DialogoZona.Editar)?.zona?.nombre.orEmpty()
+    val zonaAppInicial = (dialogo as? DialogoZona.Editar)?.zona?.zonaAppId
+        ?.takeIf { id -> zonasApp.any { it.id == id } }
     var nombre by remember(dialogo) { mutableStateOf(nombreInicial) }
+    var zonaAppId by remember(dialogo) { mutableStateOf(zonaAppInicial) }
+    var menuZonaAppAbierto by remember(dialogo) { mutableStateOf(false) }
     var error by remember(dialogo) { mutableStateOf<String?>(null) }
+    val etiquetaZonaApp = zonasApp.firstOrNull { it.id == zonaAppId }?.nombre ?: "Sin asignar"
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -475,6 +504,50 @@ private fun ZonaDialog(
                     isError = error != null,
                     modifier = Modifier.fillMaxWidth()
                 )
+                if (esEdicion) {
+                    Spacer(Modifier.height(12.dp))
+                    ExposedDropdownMenuBox(
+                        expanded = menuZonaAppAbierto,
+                        onExpandedChange = { menuZonaAppAbierto = it }
+                    ) {
+                        OutlinedTextField(
+                            value = etiquetaZonaApp,
+                            onValueChange = {},
+                            readOnly = true,
+                            singleLine = true,
+                            label = { Text("Zona de la app") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(
+                                    expanded = menuZonaAppAbierto
+                                )
+                            },
+                            modifier = Modifier
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                                .fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = menuZonaAppAbierto,
+                            onDismissRequest = { menuZonaAppAbierto = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Sin asignar") },
+                                onClick = {
+                                    zonaAppId = null
+                                    menuZonaAppAbierto = false
+                                }
+                            )
+                            zonasApp.forEach { zona ->
+                                DropdownMenuItem(
+                                    text = { Text(zona.nombre) },
+                                    onClick = {
+                                        zonaAppId = zona.id
+                                        menuZonaAppAbierto = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
                 error?.let {
                     Spacer(Modifier.height(6.dp))
                     Text(
@@ -488,7 +561,8 @@ private fun ZonaDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val resultado = onGuardar(nombre)
+                    val zonaAppIdValido = zonasApp.firstOrNull { it.id == zonaAppId }?.id
+                    val resultado = onGuardar(nombre, zonaAppIdValido)
                     if (resultado == null) {
                         onExito(if (esEdicion) "Zona actualizada." else "Zona agregada.")
                     } else {
